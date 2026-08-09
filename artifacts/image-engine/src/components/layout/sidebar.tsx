@@ -24,15 +24,17 @@ import { supabase } from '@/lib/supabase';
 
 function AdBanner300({ collapsed, activeView }: { collapsed: boolean; activeView: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  const injected = useRef(false);
 
   useEffect(() => {
     if (collapsed || activeView === 'admin') return;
     if (!ref.current) return;
+    if (injected.current) return;
+    injected.current = true;
 
-    // احسب العرض الفعلي للـ container ناقص الـ padding (12px يمين + 12px شمال)
-    const containerWidth = ref.current.parentElement?.offsetWidth ?? 256;
-    const adWidth = Math.max(160, containerWidth - 24); // 24px = padding يمين + شمال
-    const adHeight = Math.round(adWidth * (250 / 300)); // نحافظ على نسبة 300:250
+    // عرض ثابت 220px = sidebar (256px) ناقص padding (12px × 2) ناقص border
+    const adWidth = 220;
+    const adHeight = Math.round(adWidth * (250 / 300)); // نسبة 300:250
 
     ref.current.innerHTML = '';
 
@@ -45,6 +47,13 @@ function AdBanner300({ collapsed, activeView }: { collapsed: boolean; activeView
 
     ref.current.appendChild(s1);
     ref.current.appendChild(s2);
+  }, [collapsed, activeView]);
+
+  // لما الـ sidebar يتفتح من جديد — نسمح بإعادة الـ inject
+  useEffect(() => {
+    if (!collapsed && activeView !== 'admin') {
+      injected.current = false;
+    }
   }, [collapsed, activeView]);
 
   if (collapsed || activeView === 'admin') return null;
@@ -138,7 +147,7 @@ export function Sidebar({
       )}
     >
       <div className="flex h-16 items-center justify-between px-4">
-        <Logo collapsed={collapsed} />
+        <Logo collapsed={collapsed} size="lg" />
       </div>
 
       <nav className="scrollbar-thin flex-1 space-y-1 overflow-y-auto px-3 py-2">
