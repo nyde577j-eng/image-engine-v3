@@ -70,6 +70,7 @@ export const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'sidebar.editor': 'Editor',
     'sidebar.videos': 'Videos',
     'sidebar.videosAdmin': 'Videos Admin',
+    'sidebar.tts': 'Text to Speech',
   },
   ar: {
     'workspace.personal': 'شخصي',
@@ -140,6 +141,7 @@ export const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'sidebar.editor': 'المحرر',
     'sidebar.videos': 'مركز الفيديوهات',
     'sidebar.videosAdmin': 'إدارة الفيديوهات',
+    'sidebar.tts': 'تحويل النص لصوت',
   },
 };
 

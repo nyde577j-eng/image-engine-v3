@@ -38,6 +38,7 @@ import { AdminBannerPage } from './pages/banner-page';
 import { AdminChatProvidersPage } from './pages/chat-providers-page';
 import { AdminImageProvidersPage } from './pages/image-providers-page';
 import { AdminVideoSyncPage } from './pages/video-sync-page';
+import { TtsKeysPage } from './pages/tts-keys-page';
 
 export type AdminSubPage =
   | 'image-providers'
@@ -52,7 +53,8 @@ export type AdminSubPage =
   | 'credits'
   | 'support'
   | 'banner'
-  | 'video-sync';
+  | 'video-sync'
+  | 'tts-keys';
 
 const SUB_PAGES: {
   id: AdminSubPage;
@@ -63,6 +65,7 @@ const SUB_PAGES: {
   { id: 'image-providers', label: 'Image Providers', icon: ImageIcon,        description: 'Manage image generation models & API keys' },
   { id: 'chat-providers',  label: 'Chat Providers',  icon: MessageSquare,    description: 'Manage AI chat models & API keys' },
   { id: 'video-sync',      label: 'Video Sync',      icon: Film,             description: 'مزامنة وإدارة فيديوهات Facebook' },
+  { id: 'tts-keys',        label: 'TTS Keys',        icon: Workflow,         description: 'إدارة Fish Audio API Keys لنظام Text-to-Speech' },
   { id: 'image-editor',    label: 'Image Editor',    icon: Wand2,            description: 'Enable/disable AI image editing feature' },
   { id: 'credits',         label: 'Credits',         icon: Zap,              description: 'Visitor credits & cost per operation' },
   { id: 'banner',          label: 'Banner',          icon: Megaphone,        description: 'Announcement bar shown at the top of the site' },
@@ -160,6 +163,7 @@ export function AdminView() {
             {subPage === 'image-providers' && <AdminImageProvidersPage />}
             {subPage === 'chat-providers'  && <AdminChatProvidersPage />}
             {subPage === 'video-sync'      && <AdminVideoSyncPage />}
+            {subPage === 'tts-keys'        && <TtsKeysPage />}
             {subPage === 'templates'       && <AdminTemplatesPage />}
             {subPage === 'gen-settings'    && <AdminGenerationSettingsPage />}
             {subPage === 'queue'           && <AdminQueuePage />}

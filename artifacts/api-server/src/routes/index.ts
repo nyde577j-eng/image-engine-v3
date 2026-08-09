@@ -8,6 +8,7 @@ import imageProvidersRouter from "./image-providers";
 import videosRouter from "./videos/index.js";
 import statsRouter from "./stats";
 import adminRouter from "./admin";
+import ttsRouter from "./tts";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(imageProvidersRouter);
 router.use(videosRouter);
 router.use(statsRouter);
 router.use(adminRouter);
+router.use(ttsRouter);
 
 export default router;

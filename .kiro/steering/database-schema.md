@@ -156,3 +156,31 @@
 - قاعدة البيانات من نوع PostgreSQL عبر Supabase
 - الـ API متاح على: `https://irwhkqrpexblmrhfalge.supabase.co/rest/v1/`
 - Authentication يتم عبر Service Role Key في الـ headers
+
+---
+
+### 12. `tts_api_keys`
+جدول إدارة Fish Audio API Keys — يدعم أكثر من key مع rotation تلقائي.
+
+| العمود | النوع | الوصف |
+|--------|-------|-------|
+| id | uuid (PK) | معرف فريد |
+| name | text | اسم وصفي للـ key (مثال: "Key 1") |
+| key_value | text | Fish Audio API Key |
+| enabled | boolean | هل الـ key فعّال؟ |
+| sort_order | integer | ترتيب الأولوية (الأصغر يُستخدم أولاً) |
+| created_at | timestamp | تاريخ الإضافة |
+| last_used_at | timestamp | آخر استخدام |
+
+**SQL لإنشاء الجدول:**
+```sql
+create table tts_api_keys (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  key_value text not null,
+  enabled boolean not null default true,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  last_used_at timestamptz
+);
+```

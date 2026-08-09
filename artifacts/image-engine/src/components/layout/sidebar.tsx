@@ -12,6 +12,7 @@ import {
   Wand2,
   MessageSquare,
   Film,
+  AudioLines,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Logo } from './logo';
@@ -83,6 +84,7 @@ const NAV_ITEMS: {
   { id: 'history', labelKey: 'sidebar.history', icon: History },
   { id: 'collections', labelKey: 'sidebar.collections', icon: FolderOpen },
   { id: 'chat', labelKey: 'sidebar.chat', icon: MessageSquare },
+  { id: 'tts', labelKey: 'sidebar.tts', icon: AudioLines },
   { id: 'videos', labelKey: 'sidebar.videos', icon: Film },
   { id: 'api', labelKey: 'sidebar.api', icon: Code2 },
   { id: 'admin', labelKey: 'sidebar.admin', icon: Shield, badge: 'Admin' },
