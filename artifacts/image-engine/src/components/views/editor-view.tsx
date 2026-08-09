@@ -10,12 +10,14 @@ import {
   ImageIcon,
   RotateCcw,
   Zap,
+  Lock,
 } from 'lucide-react';
 import { PageContainer, PageHeader } from './shared';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/components/providers/app-provider';
 import { ASPECT_RATIOS } from '@/lib/mock-data';
+import { supabase } from '@/lib/supabase';
 
 export function EditorView() {
   const { toast } = useToast();
@@ -29,6 +31,21 @@ export function EditorView() {
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
+
+  // جيب إعداد allow_custom_size من Supabase
+  const [allowCustomSize, setAllowCustomSize] = useState(false);
+  useEffect(() => {
+    supabase
+      .from('feature_settings')
+      .select('config')
+      .eq('id', 'image_editor')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.config && typeof data.config === 'object') {
+          setAllowCustomSize(!!(data.config as Record<string, unknown>).allow_custom_size);
+        }
+      });
+  }, []);
 
   const currentRatio = ASPECT_RATIOS.find((r) => r.value === aspectRatio)!;
 
@@ -192,28 +209,51 @@ export function EditorView() {
 
             {/* Aspect Ratio */}
             <div className="rounded-2xl border border-border bg-card/40 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Output Size</p>
-              <div className="flex flex-wrap gap-2">
-                {ASPECT_RATIOS.map((r) => (
-                  <button
-                    key={r.value}
-                    onClick={() => setAspectRatio(r.value)}
-                    className={cn(
-                      'flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-all',
-                      aspectRatio === r.value
-                        ? 'border-primary/40 bg-primary/10 text-primary'
-                        : 'border-border bg-card/40 text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                    )}
-                  >
-                    <span
-                      className="rounded-sm border border-current"
-                      style={{ width: 16, height: 16 * (r.h / r.w), minHeight: 8 }}
-                    />
-                    {r.label}
-                  </button>
-                ))}
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Output Size</p>
+                {!allowCustomSize && (
+                  <span className="flex items-center gap-1 rounded-lg bg-secondary px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                    <Lock className="h-3 w-3" />
+                    Fixed by API
+                  </span>
+                )}
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">{currentRatio.w} × {currentRatio.h}px</p>
+              <div className="flex flex-wrap gap-2">
+                {ASPECT_RATIOS.map((r) => {
+                  const isActive = aspectRatio === r.value;
+                  const isLocked = !allowCustomSize;
+                  return (
+                    <button
+                      key={r.value}
+                      onClick={() => { if (!isLocked) setAspectRatio(r.value); }}
+                      disabled={isLocked}
+                      title={isLocked ? 'Output size is fixed by the API — enable from Admin → Image Editor' : r.label}
+                      className={cn(
+                        'relative flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-all',
+                        isLocked
+                          ? 'cursor-not-allowed border-border bg-card/20 text-muted-foreground/40'
+                          : isActive
+                            ? 'border-primary/40 bg-primary/10 text-primary'
+                            : 'border-border bg-card/40 text-muted-foreground hover:border-primary/30 hover:text-foreground',
+                      )}
+                    >
+                      <span
+                        className="rounded-sm border border-current"
+                        style={{ width: 16, height: 16 * (r.h / r.w), minHeight: 8 }}
+                      />
+                      {r.label}
+                      {isLocked && (
+                        <Lock className="h-3 w-3 shrink-0 opacity-50" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {allowCustomSize
+                  ? `${currentRatio.w} × ${currentRatio.h}px`
+                  : 'Output size is determined by the editing API'}
+              </p>
             </div>
 
             {/* Edit button */}

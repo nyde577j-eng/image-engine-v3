@@ -14,12 +14,14 @@ import {
 interface EditorSettings {
   enabled: boolean;
   api_url: string;
+  allow_custom_size: boolean;
 }
 
 export function AdminImageEditorPage() {
   const [settings, setSettings] = useState<EditorSettings>({
     enabled: false,
     api_url: 'https://viscodev.x10.mx/img_editing/api.php',
+    allow_custom_size: false,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -36,6 +38,7 @@ export function AdminImageEditorPage() {
       setSettings({
         enabled: data.enabled,
         api_url: (data.config as any)?.api_url ?? settings.api_url,
+        allow_custom_size: (data.config as any)?.allow_custom_size ?? false,
       });
     }
     setLoading(false);
@@ -48,7 +51,7 @@ export function AdminImageEditorPage() {
     await supabase.from('feature_settings').upsert({
       id: 'image_editor',
       enabled: settings.enabled,
-      config: { api_url: settings.api_url },
+      config: { api_url: settings.api_url, allow_custom_size: settings.allow_custom_size },
     });
     setSaving(false);
     setSaved(true);
@@ -96,6 +99,21 @@ export function AdminImageEditorPage() {
             <p className="mt-1 text-[11px] text-muted-foreground">
               The backend API that handles image editing requests.
             </p>
+          </div>
+
+          {/* Allow Custom Output Size */}
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card/40 p-4">
+            <div>
+              <p className="text-sm font-medium">Allow Custom Output Size</p>
+              <p className="text-xs text-muted-foreground">
+                Let users choose aspect ratio (1:1 / 3:2 / 2:3 / 16:9 / 9:16).
+                Disable if the API does not support custom dimensions — buttons will appear locked 🔒
+              </p>
+            </div>
+            <AdminToggle
+              checked={settings.allow_custom_size}
+              onChange={(v) => setSettings((prev) => ({ ...prev, allow_custom_size: v }))}
+            />
           </div>
         </div>
         </AdminCard>
