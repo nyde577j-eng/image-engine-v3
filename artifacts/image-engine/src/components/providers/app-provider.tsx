@@ -43,6 +43,8 @@ interface AppContextValue {
   // Settings section navigation
   settingsSection: string;
   setSettingsSection: (s: string) => void;
+  // Admin
+  isAdmin: boolean;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -81,6 +83,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [editCost, setEditCost] = useState(5);
   const [avatarId, setAvatarIdState] = useState<string>('a1');
   const [settingsSection, setSettingsSection] = useState<string>('profile');
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    try {
+      const raw = window.localStorage.getItem('admin_session_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { isAuthenticated?: boolean };
+        return !!parsed?.isAuthenticated;
+      }
+    } catch { /* ignore */ }
+    return false;
+  });
+
+  // مراقبة تغييرات localStorage (login/logout في نفس الـ tab)
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key !== 'admin_session_v1') return;
+      try {
+        const raw = e.newValue;
+        if (!raw) { setIsAdmin(false); return; }
+        const parsed = JSON.parse(raw) as { isAuthenticated?: boolean };
+        setIsAdmin(!!parsed?.isAuthenticated);
+      } catch { setIsAdmin(false); }
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
 
   // Load credits from localStorage on mount
   useEffect(() => {
@@ -99,9 +126,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch credit settings from Supabase on mount
   useEffect(() => {
-    // لو الأدمن logged in — مفيش تكلفة عليه
+    // لو الأدمن logged in — مفيش تكلفة عليه (admin session محفوظ في localStorage)
     try {
-      const raw = sessionStorage.getItem('admin_session_v1');
+      const raw = window.localStorage.getItem('admin_session_v1');
       if (raw) {
         const parsed = JSON.parse(raw) as { isAuthenticated?: boolean };
         if (parsed?.isAuthenticated) {
@@ -135,8 +162,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(CREDITS_KEY, String(credits));
   }, [credits]);
 
-  // Deduct credits — returns true if successful, false if not enough
+  // Deduct credits — الأدمن معفى تماماً، المستخدم العادي بيتخصم منه
   const deductCredits = useCallback((amount: number): boolean => {
+    // لو admin — نوافق دايماً بدون خصم
+    try {
+      const raw = window.localStorage.getItem('admin_session_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { isAuthenticated?: boolean };
+        if (parsed?.isAuthenticated) return true;
+      }
+    } catch { /* ignore */ }
+
     let success = false;
     setCredits((prev) => {
       if (prev < amount) return prev;
@@ -208,6 +244,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAvatarId,
         settingsSection,
         setSettingsSection,
+        isAdmin,
       }}
     >
       {children}

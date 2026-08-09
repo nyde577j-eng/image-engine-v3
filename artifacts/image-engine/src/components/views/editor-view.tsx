@@ -21,7 +21,7 @@ import { supabase } from '@/lib/supabase';
 
 export function EditorView() {
   const { toast } = useToast();
-  const { credits, deductCredits, editCost } = useApp();
+  const { credits, deductCredits, editCost, isAdmin } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [uploadedImageName, setUploadedImageName] = useState('');
@@ -71,8 +71,8 @@ export function EditorView() {
   const handleEdit = async () => {
     if (!uploadedImage || !prompt.trim()) return;
 
-    // Check credits before proceeding
-    if (credits < editCost) {
+    // Check credits before proceeding — الأدمن معفى
+    if (!isAdmin && credits < editCost) {
       toast({
         title: 'Insufficient credits',
         description: `You need ${editCost} credits to edit an image. You have ${credits}.`,
@@ -259,10 +259,10 @@ export function EditorView() {
             {/* Edit button */}
             <button
               onClick={handleEdit}
-              disabled={!uploadedImage || !prompt.trim() || isLoading || credits < editCost}
+              disabled={!uploadedImage || !prompt.trim() || isLoading || (!isAdmin && credits < editCost)}
               className={cn(
                 'group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl py-4 text-base font-bold transition-all',
-                !uploadedImage || !prompt.trim() || isLoading || credits < editCost
+                !uploadedImage || !prompt.trim() || isLoading || (!isAdmin && credits < editCost)
                   ? 'cursor-not-allowed bg-secondary text-muted-foreground'
                   : 'gradient-amber text-black hover:glow-amber',
               )}
@@ -272,7 +272,7 @@ export function EditorView() {
                   <Loader2 className="h-5 w-5 animate-spin" />
                   Editing image...
                 </>
-              ) : credits < editCost ? (
+              ) : !isAdmin && credits < editCost ? (
                 <>
                   <Zap className="h-5 w-5" />
                   Not enough credits ({credits}/{editCost})

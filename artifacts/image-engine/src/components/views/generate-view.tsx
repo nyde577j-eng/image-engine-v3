@@ -43,6 +43,7 @@ export function GenerateView() {
     credits,
     deductCredits,
     generateCost,
+    isAdmin,
   } = useApp();
   const { toast } = useToast();
 
@@ -89,7 +90,7 @@ export function GenerateView() {
       toast({ title: 'اختر نموذج', description: 'أضف image provider من لوحة الأدمن أولاً' });
       return;
     }
-    if (credits < generateCost) {
+    if (!isAdmin && credits < generateCost) {
       toast({ title: 'رصيد غير كافي', description: `تحتاج ${generateCost} credits`, variant: 'destructive' });
       return;
     }
@@ -328,17 +329,17 @@ export function GenerateView() {
             <div className="rounded-2xl border border-border bg-card/60 p-5 backdrop-blur-sm">
               <button
                 onClick={handleGenerate}
-                disabled={!prompt.trim() || isLoading || credits < generateCost || imageProviders.length === 0}
+                disabled={!prompt.trim() || isLoading || (!isAdmin && credits < generateCost) || imageProviders.length === 0}
                 className={cn(
                   'group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl py-4 text-base font-bold transition-all',
-                  isLoading || credits < generateCost || imageProviders.length === 0
+                  isLoading || (!isAdmin && credits < generateCost) || imageProviders.length === 0
                     ? 'cursor-not-allowed bg-secondary text-muted-foreground'
                     : 'gradient-amber text-black hover:glow-amber',
                 )}
               >
                 {isLoading ? (
                   <><Loader2 className="h-5 w-5 animate-spin" />جاري التوليد...</>
-                ) : credits < generateCost ? (
+                ) : !isAdmin && credits < generateCost ? (
                   <><Zap className="h-5 w-5" />رصيد غير كافي ({credits}/{generateCost})</>
                 ) : (
                   <>

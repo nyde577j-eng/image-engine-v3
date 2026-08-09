@@ -54,7 +54,7 @@ const AVATAR_MAP: Record<string, { bg: string; icon: React.ComponentType<{ class
 };
 
 export function TopBar({ onMenu }: { onMenu: () => void }) {
-  const { setActiveView, locale, setLocale, credits, avatarId, setSettingsSection } = useApp();
+  const { setActiveView, locale, setLocale, credits, avatarId, setSettingsSection, isAdmin } = useApp();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -124,12 +124,19 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 md:ml-3">
-        {/* Credits */}
-        <div className="hidden items-center gap-2 rounded-xl border border-border bg-card/50 px-3 py-2 lg:flex">
-          <Zap className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold">{credits}</span>
-          <span className="text-xs text-muted-foreground">{t(locale, 'topbar.credits')}</span>
-        </div>
+        {/* Credits — يظهر فقط للمستخدمين العاديين */}
+        {isAdmin ? (
+          <div className="hidden items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 lg:flex">
+            <Shield className="h-4 w-4 text-primary" />
+            <span className="text-xs font-semibold text-primary">Admin</span>
+          </div>
+        ) : (
+          <div className="hidden items-center gap-2 rounded-xl border border-border bg-card/50 px-3 py-2 lg:flex">
+            <Zap className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold">{credits}</span>
+            <span className="text-xs text-muted-foreground">{t(locale, 'topbar.credits')}</span>
+          </div>
+        )}
 
         {/* Theme toggle */}
         <button
