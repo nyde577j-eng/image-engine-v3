@@ -209,22 +209,19 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
           <button
             onClick={() => setProfileOpen((v) => !v)}
             className={cn(
-              'flex items-center gap-2 rounded-xl border py-1.5 pl-1.5 pr-2 transition-colors',
+              'flex items-center justify-center rounded-xl border p-2 transition-colors',
               profileOpen
-                ? 'border-primary/40 bg-card'
-                : 'border-border bg-card/50 hover:border-primary/40 hover:bg-card',
+                ? 'border-primary/40 bg-card text-primary'
+                : 'border-border bg-card/50 text-muted-foreground hover:border-primary/40 hover:bg-card hover:text-foreground',
             )}
-            aria-label="Open profile menu"
+            aria-label="Open menu"
           >
-            <div className={cn('flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br text-sm', AVATAR_MAP[avatarId]?.bg ?? 'from-amber-400 to-orange-500')}>
-              {(() => { const Icon = AVATAR_MAP[avatarId]?.icon ?? Zap; return <Icon className="h-4 w-4 text-white" />; })()}
-            </div>
-            <ChevronDown
-              className={cn(
-                'h-4 w-4 text-muted-foreground transition-transform',
-                profileOpen && 'rotate-180',
-              )}
-            />
+            <motion.div
+              animate={{ rotate: profileOpen ? 180 : 0 }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <ChevronDown className="h-5 w-5" />
+            </motion.div>
           </button>
 
           <AnimatePresence>
