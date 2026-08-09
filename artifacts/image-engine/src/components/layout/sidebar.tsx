@@ -23,20 +23,24 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 
 function AdBanner300({ collapsed, activeView }: { collapsed: boolean; activeView: string }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLDivElement>(null);
   const injected = useRef(false);
 
   useEffect(() => {
     if (collapsed || activeView === 'admin') return;
-    if (!ref.current) return;
+    if (!ref.current || !wrapRef.current) return;
     if (injected.current) return;
     injected.current = true;
 
-    // عرض ثابت 220px = sidebar (256px) ناقص padding (12px × 2) ناقص border
-    const adWidth = 220;
+    // احسب العرض الفعلي للـ wrapper ناقص الـ padding (24px)
+    const containerWidth = wrapRef.current.offsetWidth;
+    const adWidth = Math.max(120, containerWidth - 24);
     const adHeight = Math.round(adWidth * (250 / 300)); // نسبة 300:250
 
     ref.current.innerHTML = '';
+    // اضبط ارتفاع الـ container بعد معرفة الحجم الحقيقي
+    ref.current.style.height = `${adHeight}px`;
 
     const s1 = document.createElement('script');
     s1.innerHTML = `atOptions = {'key':'1d999c815155d29961fe491bca4e770a','format':'iframe','height':${adHeight},'width':${adWidth},'params':{}};`;
@@ -59,11 +63,10 @@ function AdBanner300({ collapsed, activeView }: { collapsed: boolean; activeView
   if (collapsed || activeView === 'admin') return null;
 
   return (
-    <div className="px-3 pb-3">
+    <div ref={wrapRef} className="px-3 pb-3">
       <div
         ref={ref}
         className="w-full overflow-hidden rounded-xl border border-border/30 bg-secondary/20"
-        style={{ minHeight: 160 }}
       />
     </div>
   );
