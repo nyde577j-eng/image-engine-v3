@@ -109,10 +109,10 @@ router.post("/image-providers/fetch-models", async (req, res) => {
     return res.json({
       ok: true,
       models: [
-        { id: "gpt-image-2",   name: "GPT Image 2 (أحدث)",   supported: true, isFree: false },
-        { id: "gpt-image-1",   name: "GPT Image 1",           supported: true, isFree: false },
-        { id: "dall-e-3",      name: "DALL·E 3",              supported: true, isFree: false },
-        { id: "dall-e-2",      name: "DALL·E 2",              supported: true, isFree: false },
+        { id: "gpt-image-1.5",  name: "GPT Image 1.5 (الأحدث — موصى به)", supported: true, isFree: false },
+        { id: "gpt-image-1",    name: "GPT Image 1",                        supported: true, isFree: false },
+        { id: "gpt-image-1-mini", name: "GPT Image 1 Mini (أسرع وأرخص)",  supported: true, isFree: false },
+        { id: "dall-e-2",       name: "DALL·E 2 (legacy)",                  supported: true, isFree: false },
       ] as FetchedModel[],
     });
   }
@@ -218,22 +218,22 @@ router.post("/image-providers/generate", async (req, res) => {
       return res.json({ ok: true, imageUrl });
     }
 
-    // ── Google Gemini (Nano Banana) — /v1beta/interactions ───────
+    // ── Google Gemini (Nano Banana) — /v1beta/models/{model}:generateContent ───────
     if (provider_type === "gemini") {
       if (!api_key) return res.status(400).json({ ok: false, error: "API Key required for Gemini" });
       const modelName = model ?? "gemini-3.1-flash-image";
+      const aspectRatio = getAspectRatio(w, h);
 
       const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/interactions?key=${api_key}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${api_key}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: modelName,
-            input: prompt,
-            response_format: {
-              type: "image",
-              aspect_ratio: getAspectRatio(w, h),
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseModalities: ["IMAGE"],
+              responseFormat: { image: { aspectRatio } },
             },
           }),
         },
@@ -251,22 +251,14 @@ router.post("/image-providers/generate", async (req, res) => {
       }
 
       const geminiData = await geminiRes.json() as {
-        output_image?: { data: string; mimeType?: string };
-        steps?: { type: string; content?: { type: string; data?: string; mimeType?: string }[] }[];
+        candidates?: { content?: { parts?: { inlineData?: { data: string; mimeType?: string }; text?: string }[] } }[];
       };
 
-      if (geminiData.output_image?.data) {
-        const mime = geminiData.output_image.mimeType ?? "image/png";
-        return res.json({ ok: true, imageUrl: `data:${mime};base64,${geminiData.output_image.data}` });
-      }
-      for (const step of geminiData.steps ?? []) {
-        if (step.type === "model_output") {
-          for (const block of step.content ?? []) {
-            if (block.type === "image" && block.data) {
-              const mime = block.mimeType ?? "image/png";
-              return res.json({ ok: true, imageUrl: `data:${mime};base64,${block.data}` });
-            }
-          }
+      const parts = geminiData.candidates?.[0]?.content?.parts ?? [];
+      for (const part of parts) {
+        if (part.inlineData?.data) {
+          const mime = part.inlineData.mimeType ?? "image/png";
+          return res.json({ ok: true, imageUrl: `data:${mime};base64,${part.inlineData.data}` });
         }
       }
       return res.status(502).json({ ok: false, error: "Gemini لم يرجع صورة — تأكد من صلاحية الـ API Key والموديل" });
@@ -309,15 +301,25 @@ router.post("/image-providers/generate", async (req, res) => {
     if (provider_type === "openai") {
       if (!api_key) return res.status(400).json({ ok: false, error: "API Key required for OpenAI" });
       const base = (base_url ?? "https://api.openai.com").replace(/\/$/, "");
-      const modelName = model ?? "gpt-image-2";
+      const modelName = model ?? "gpt-image-1";
 
-      // GPT Image 2 يستخدم /v1/images/generations بنفس format
       const size = w > h ? "1536x1024" : w < h ? "1024x1536" : "1024x1024";
+
+      // gpt-image-1.x and gpt-image-1 support quality param; dall-e-2 does not
+      const isGptImage = modelName.startsWith("gpt-image");
+      const requestBody: Record<string, unknown> = {
+        model: modelName,
+        prompt,
+        n: 1,
+        size,
+        response_format: "b64_json",
+      };
+      if (isGptImage) requestBody.quality = "high";
 
       const openaiRes = await fetch(`${base}/v1/images/generations`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${api_key}` },
-        body: JSON.stringify({ model: modelName, prompt, n: 1, size, response_format: "b64_json" }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!openaiRes.ok) {

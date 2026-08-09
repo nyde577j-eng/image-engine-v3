@@ -1,167 +1,238 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Code2, Copy, Check, Key, Webhook, Book, Zap } from 'lucide-react';
+import { Code2, Copy, Check, Webhook, Zap, Loader2, Image as ImageIcon, MessageSquare, Wand2, Video } from 'lucide-react';
 import { PageContainer, PageHeader } from './shared';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
-const API_KEY = 'lm_sk_8f2a9b3c7d1e4f6a8b2c9d3e5f7a1b3c';
+// ── Real endpoints that actually exist on the backend ──────────────
 const ENDPOINTS = [
-  { method: 'POST', path: '/v1/images/generations', desc: 'Create an image from a text prompt' },
-  { method: 'GET', path: '/v1/images/:id', desc: 'Retrieve a generated image' },
-  { method: 'GET', path: '/v1/models', desc: 'List available models' },
-  { method: 'DELETE', path: '/v1/images/:id', desc: 'Delete an image' },
-  { method: 'POST', path: '/v1/workflows/run', desc: 'Execute a ComfyUI workflow' },
+  { method: 'POST', path: '/api/image-providers/generate', desc: 'Generate an image via configured provider (Gemini, Pollinations, OpenAI, etc.)' },
+  { method: 'GET',  path: '/api/image-providers',          desc: 'List all enabled image providers' },
+  { method: 'POST', path: '/api/edit',                     desc: 'AI-powered image editing — upload + prompt' },
+  { method: 'POST', path: '/api/chat',                     desc: 'Send a chat message to the configured AI provider' },
+  { method: 'GET',  path: '/api/chat/sessions',            desc: 'List all chat sessions' },
+  { method: 'POST', path: '/api/chat/sessions',            desc: 'Create a new chat session' },
+  { method: 'POST', path: '/api/comfy/generate',           desc: 'Run a ComfyUI workflow and wait for the image' },
+  { method: 'GET',  path: '/api/comfy/check',              desc: 'Check connectivity to the ComfyUI instance' },
+  { method: 'POST', path: '/api/generate',                 desc: 'Proxy a raw ComfyUI workflow to /prompt' },
+  { method: 'GET',  path: '/api/videos',                   desc: 'List Facebook page videos with pagination & search' },
+  { method: 'POST', path: '/api/videos/sync',              desc: 'Sync all videos from Facebook Graph API (SSE stream)' },
+  { method: 'GET',  path: '/api/stats',                    desc: 'Fetch site statistics (visits, edits, videos)' },
+  { method: 'GET',  path: '/api/healthz',                  desc: 'Health check endpoint' },
 ];
 
-const CODE_SAMPLE = `curl -X POST https://api.lumen.ai/v1/images/generations \\
-  -H "Authorization: Bearer ${API_KEY}" \\
+// ── Code samples for the most useful endpoints ─────────────────────
+const CODE_SAMPLES: Record<string, string> = {
+  generate: `# Generate an image
+curl -X POST /api/image-providers/generate \\
   -H "Content-Type: application/json" \\
   -d '{
-    "model": "lumen-xl-v2.1",
+    "provider_type": "pollinations",
+    "model": "flux",
     "prompt": "cinematic portrait, golden hour",
     "width": 1024,
-    "height": 1024,
-    "steps": 30,
-    "cfg_scale": 7
-  }'`;
+    "height": 1024
+  }'`,
+  edit: `# Edit an image with AI
+curl -X POST /api/edit \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "text": "add a sunset sky background",
+    "imageUrl": "https://example.com/image.png",
+    "width": 1024,
+    "height": 1024
+  }'`,
+  chat: `# Chat with AI
+curl -X POST /api/chat \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "message": "Describe this image in detail",
+    "providerId": "your-provider-id"
+  }'`,
+  comfy: `# Run a ComfyUI workflow
+curl -X POST /api/comfy/generate \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "prompt": { "3": { "class_type": "KSampler", "inputs": { ... } } }
+  }'`,
+};
+
+type SampleKey = keyof typeof CODE_SAMPLES;
+
+interface RealStats {
+  totalImages: number;
+  totalJobs: number;
+  totalChats: number;
+  totalVideos: number;
+  loading: boolean;
+}
 
 export function ApiView() {
-  const [copiedKey, setCopiedKey] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [activeTab, setActiveTab] = useState<SampleKey>('generate');
+  const [stats, setStats] = useState<RealStats>({
+    totalImages: 0, totalJobs: 0, totalChats: 0, totalVideos: 0, loading: true,
+  });
 
-  const copy = (text: string, setter: (v: boolean) => void) => {
+  // Fetch real stats from Supabase
+  useEffect(() => {
+    async function load() {
+      try {
+        const [imagesRes, jobsRes, chatsRes, videosRes] = await Promise.all([
+          supabase.from('stored_images').select('id', { count: 'exact', head: true }),
+          supabase.from('generation_jobs').select('id', { count: 'exact', head: true }),
+          supabase.from('chat_messages').select('id', { count: 'exact', head: true }),
+          supabase.from('page_videos').select('id', { count: 'exact', head: true }),
+        ]);
+        setStats({
+          totalImages: imagesRes.count ?? 0,
+          totalJobs:   jobsRes.count   ?? 0,
+          totalChats:  chatsRes.count  ?? 0,
+          totalVideos: videosRes.count ?? 0,
+          loading: false,
+        });
+      } catch {
+        setStats(s => ({ ...s, loading: false }));
+      }
+    }
+    load();
+  }, []);
+
+  const copy = (text: string) => {
     navigator.clipboard?.writeText(text);
-    setter(true);
-    setTimeout(() => setter(false), 1500);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 1500);
   };
+
+  const SAMPLE_TABS: { key: SampleKey; label: string; icon: React.ElementType }[] = [
+    { key: 'generate', label: 'Generate',  icon: ImageIcon },
+    { key: 'edit',     label: 'Edit',      icon: Wand2 },
+    { key: 'chat',     label: 'Chat',      icon: MessageSquare },
+    { key: 'comfy',    label: 'ComfyUI',   icon: Zap },
+  ];
 
   return (
     <PageContainer>
       <PageHeader
-        title="API Access"
-        description="Integrate Lumen into your applications"
+        title="API Reference"
+        description="All available backend endpoints and live usage stats"
         icon={Code2}
       />
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* API Key */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-border bg-card/40 p-5"
-        >
-          <div className="mb-4 flex items-center gap-2">
-            <Key className="h-5 w-5 text-primary" />
-            <h3 className="text-sm font-semibold">API Key</h3>
-          </div>
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-background/50 p-3">
-            <code className="flex-1 truncate font-mono text-sm text-muted-foreground">
-              {API_KEY}
-            </code>
-            <button
-              onClick={() => copy(API_KEY, setCopiedKey)}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {copiedKey ? (
-                <Check className="h-4 w-4 text-success" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Keep your API key secure. Do not expose it in client-side code.
-          </p>
-          <button className="mt-4 w-full rounded-xl border border-border py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground">
-            Regenerate Key
-          </button>
-        </motion.div>
-
-        {/* Usage stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="rounded-2xl border border-border bg-card/40 p-5"
-        >
-          <div className="mb-4 flex items-center gap-2">
-            <Zap className="h-5 w-5 text-primary" />
-            <h3 className="text-sm font-semibold">Usage This Month</h3>
-          </div>
-          <div className="space-y-4">
-            <UsageBar label="API Calls" used={12450} total={50000} />
-            <UsageBar label="Images Generated" used={842} total={2000} />
-            <UsageBar label="Compute Minutes" used={320} total={1000} />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Code sample */}
+      {/* Live stats */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
+      >
+        {[
+          { label: 'Images Stored',  value: stats.totalImages, icon: ImageIcon,     color: 'text-primary' },
+          { label: 'Generation Jobs',value: stats.totalJobs,   icon: Zap,           color: 'text-amber-400' },
+          { label: 'Chat Messages',  value: stats.totalChats,  icon: MessageSquare, color: 'text-blue-400' },
+          { label: 'Videos',         value: stats.totalVideos, icon: Video,         color: 'text-emerald-400' },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.label} className="rounded-2xl border border-border bg-card/40 p-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Icon className={cn('h-4 w-4', item.color)} />
+                <span className="text-xs font-medium">{item.label}</span>
+              </div>
+              <div className="mt-2">
+                {stats.loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <span className="font-display text-2xl font-bold">
+                    {item.value.toLocaleString()}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </motion.div>
+
+      {/* Code samples */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
         className="mt-6 overflow-hidden rounded-2xl border border-border bg-card/40"
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <div className="flex items-center gap-2">
-            <Book className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold">Quick Start</h3>
+        {/* Tab bar */}
+        <div className="flex items-center justify-between border-b border-border px-2 py-1.5">
+          <div className="flex gap-1">
+            {SAMPLE_TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                    activeTab === tab.key
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
           <button
-            onClick={() => copy(CODE_SAMPLE, setCopiedCode)}
-            className="flex items-center gap-1.5 rounded-lg bg-secondary px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            onClick={() => copy(CODE_SAMPLES[activeTab])}
+            className="mr-2 flex items-center gap-1.5 rounded-lg bg-secondary px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            {copiedCode ? (
-              <Check className="h-3.5 w-3.5 text-success" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
+            {copiedCode ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
             {copiedCode ? 'Copied' : 'Copy'}
           </button>
         </div>
         <pre className="overflow-x-auto p-5 font-mono text-sm leading-relaxed text-muted-foreground">
-          <code>{CODE_SAMPLE}</code>
+          <code>{CODE_SAMPLES[activeTab]}</code>
         </pre>
       </motion.div>
 
-      {/* Endpoints */}
+      {/* Endpoints table */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        className="mt-6 rounded-2xl border border-border bg-card/40"
+        transition={{ delay: 0.14 }}
+        className="mt-6 overflow-hidden rounded-2xl border border-border bg-card/40"
       >
         <div className="flex items-center gap-2 border-b border-border px-5 py-3">
           <Webhook className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">Endpoints</h3>
+          <h3 className="text-sm font-semibold">Available Endpoints</h3>
+          <span className="ml-auto rounded-md bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+            {ENDPOINTS.length} endpoints
+          </span>
         </div>
         <div>
           {ENDPOINTS.map((ep, i) => (
             <div
               key={ep.path}
               className={cn(
-                'flex items-center gap-4 px-5 py-3 transition-colors hover:bg-secondary/30',
+                'flex items-center gap-3 px-5 py-3 transition-colors hover:bg-secondary/30',
                 i !== ENDPOINTS.length - 1 && 'border-b border-border/50',
               )}
             >
               <span
                 className={cn(
                   'w-16 shrink-0 rounded-md px-2 py-1 text-center text-[10px] font-bold uppercase',
-                  ep.method === 'GET'
-                    ? 'bg-success/10 text-success'
-                    : ep.method === 'POST'
-                      ? 'bg-primary/10 text-primary'
-                      : ep.method === 'DELETE'
-                        ? 'bg-destructive/10 text-destructive'
-                        : 'bg-secondary text-muted-foreground',
+                  ep.method === 'GET'    ? 'bg-success/10 text-success'
+                  : ep.method === 'POST'  ? 'bg-primary/10 text-primary'
+                  : ep.method === 'PATCH' ? 'bg-amber-400/10 text-amber-400'
+                  : ep.method === 'DELETE'? 'bg-destructive/10 text-destructive'
+                  : 'bg-secondary text-muted-foreground',
                 )}
               >
                 {ep.method}
               </span>
               <code className="shrink-0 font-mono text-sm">{ep.path}</code>
-              <span className="ml-auto hidden text-xs text-muted-foreground sm:block">
+              <span className="ml-auto hidden text-right text-xs text-muted-foreground sm:block">
                 {ep.desc}
               </span>
             </div>
@@ -169,30 +240,5 @@ export function ApiView() {
         </div>
       </motion.div>
     </PageContainer>
-  );
-}
-
-function UsageBar({ label, used, total }: { label: string; used: number; total: number }) {
-  const pct = Math.min(100, (used / total) * 100);
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between text-sm">
-        <span className="font-medium">{label}</span>
-        <span className="text-muted-foreground">
-          {used.toLocaleString()} / {total.toLocaleString()}
-        </span>
-      </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
-          className={cn(
-            'h-full rounded-full',
-            pct > 80 ? 'bg-destructive' : 'gradient-amber',
-          )}
-        />
-      </div>
-    </div>
   );
 }

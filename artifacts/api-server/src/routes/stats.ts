@@ -38,16 +38,7 @@ router.get("/stats", async (_req, res) => {
   }
 
   try {
-    // زود الزيارات بـ atomic increment
-    await sbFetch("/site_stats?key=eq.total_visits", {
-      method: "PATCH",
-      body: JSON.stringify({
-        value: 0, // placeholder — Supabase مش بيدعم increment مباشر بـ REST
-        updated_at: new Date().toISOString(),
-      }),
-    });
-
-    // نستخدم RPC لـ atomic increment
+    // نستخدم RPC لـ atomic increment للزيارات
     await fetch(`${SUPABASE_URL}/rest/v1/rpc/increment_stat`, {
       method: "POST",
       headers: {

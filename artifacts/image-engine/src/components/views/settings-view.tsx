@@ -93,6 +93,7 @@ export function SettingsView({ initialSection }: { initialSection?: string }) {
   const [email, setEmail] = useState('alex@lumen.ai');
   const [username, setUsername] = useState('@alexkim');
   const [profileSaved, setProfileSaved] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
   const [supportLinks, setSupportLinks] = useState<{ id: string; label: string; url: string; icon: string }[]>([]);
   const [notifications, setNotifications] = useState({
     generationComplete: true,
@@ -100,6 +101,51 @@ export function SettingsView({ initialSection }: { initialSection?: string }) {
     creditAlerts: false,
     productNews: false,
   });
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [notifSaved, setNotifSaved] = useState(false);
+
+  // Unique browser key used as a pseudo user_id (no auth in this app)
+  const getUserKey = () => {
+    let key = window.localStorage.getItem('ie_user_key');
+    if (!key) {
+      key = `anon_${Math.random().toString(36).slice(2, 11)}`;
+      window.localStorage.setItem('ie_user_key', key);
+    }
+    return key;
+  };
+
+  // Load profile + notifications from Supabase on mount
+  useEffect(() => {
+    async function loadSettings() {
+      const userKey = getUserKey();
+      const { data } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_key', userKey)
+        .maybeSingle();
+      if (data) {
+        if (data.display_name)  setDisplayName(data.display_name);
+        if (data.email)         setEmail(data.email);
+        if (data.username)      setUsername(data.username);
+        if (data.avatar_id) {
+          setSavedAvatar(data.avatar_id);
+          setSelectedAvatar(data.avatar_id);
+          setAvatarId(data.avatar_id);
+        }
+        if (data.notifications && typeof data.notifications === 'object') {
+          setNotifications(prev => ({ ...prev, ...(data.notifications as object) }));
+        }
+      } else {
+        // Fall back to localStorage values
+        const storedName = window.localStorage.getItem('ie_display_name');
+        const storedUsername = window.localStorage.getItem('ie_username');
+        if (storedName)     setDisplayName(storedName);
+        if (storedUsername) setUsername(storedUsername);
+      }
+    }
+    loadSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (initialSection) setSection(initialSection as SectionId);
@@ -200,17 +246,29 @@ export function SettingsView({ initialSection }: { initialSection?: string }) {
               <Field label={t(locale, 'settings.profile.username')} value={username} onChange={setUsername} />
               <div className="flex items-center gap-3">
               <button
-                onClick={() => {
+                onClick={async () => {
+                  setProfileSaving(true);
                   setSavedAvatar(selectedAvatar);
                   setAvatarId(selectedAvatar);
                   window.localStorage.setItem('ie_display_name', displayName);
                   window.localStorage.setItem('ie_username', username);
+                  // Persist to Supabase
+                  const userKey = getUserKey();
+                  await supabase.from('user_settings').upsert({
+                    user_key: userKey,
+                    display_name: displayName,
+                    email,
+                    username,
+                    avatar_id: selectedAvatar,
+                    updated_at: new Date().toISOString(),
+                  }, { onConflict: 'user_key' });
+                  setProfileSaving(false);
                   setProfileSaved(true);
                   setTimeout(() => setProfileSaved(false), 2000);
                 }}
-                className="rounded-xl gradient-amber px-4 py-2.5 text-sm font-semibold text-black transition-all hover:glow-amber"
+                className="rounded-xl gradient-amber px-4 py-2.5 text-sm font-semibold text-black transition-all hover:glow-amber disabled:opacity-60"
               >
-                {t(locale, 'settings.profile.saveChanges')}
+                {profileSaving ? 'Saving...' : t(locale, 'settings.profile.saveChanges')}
               </button>
               {profileSaved && (
                 <span className="flex items-center gap-1.5 text-sm text-success">
@@ -290,6 +348,31 @@ export function SettingsView({ initialSection }: { initialSection?: string }) {
                   onChange={(v) => setNotifications((prev) => ({ ...prev, [key]: v }))}
                 />
               ))}
+              <div className="flex items-center gap-3 border-t border-border pt-4">
+                <button
+                  onClick={async () => {
+                    setNotifSaving(true);
+                    const userKey = getUserKey();
+                    await supabase.from('user_settings').upsert({
+                      user_key: userKey,
+                      notifications,
+                      updated_at: new Date().toISOString(),
+                    }, { onConflict: 'user_key' });
+                    setNotifSaving(false);
+                    setNotifSaved(true);
+                    setTimeout(() => setNotifSaved(false), 2000);
+                  }}
+                  disabled={notifSaving}
+                  className="rounded-xl gradient-amber px-4 py-2.5 text-sm font-semibold text-black transition-all hover:glow-amber disabled:opacity-60"
+                >
+                  {notifSaving ? 'Saving...' : 'Save Preferences'}
+                </button>
+                {notifSaved && (
+                  <span className="flex items-center gap-1.5 text-sm text-success">
+                    <Check className="h-4 w-4" /> Saved
+                  </span>
+                )}
+              </div>
             </div>
           )}
 

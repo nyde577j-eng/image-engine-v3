@@ -147,8 +147,6 @@ router.post("/edit", async (req, res) => {
       // Download the image and return it as base64 to avoid CORS issues on the frontend
       try {
         const imgUrl = result.image_url as string;
-        const imgResponse = await postJson(imgUrl, "", 30000).catch(() => null);
-        // postJson is for POST only — use https.get instead
         const imgBase64 = await new Promise<string>((resolve, reject) => {
           const parsed = new URL(imgUrl);
           const lib = parsed.protocol === "https:" ? https : http;
