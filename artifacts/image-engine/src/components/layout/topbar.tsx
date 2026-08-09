@@ -98,13 +98,12 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
       </button>
 
       {/* Site name */}
-      <div className="flex shrink-0 items-center gap-2 rounded-xl border border-border bg-card/50 px-3 py-2">
+      <div className="flex shrink-0 items-center gap-2">
         <img
           src="/logo.png"
           alt="Image Engine"
-          className="h-6 w-6 shrink-0 object-contain"
+          className="h-9 w-auto shrink-0 object-contain"
         />
-        <span className="hidden text-sm font-medium md:inline">Image Engine</span>
       </div>
 
       {/* Search */}
