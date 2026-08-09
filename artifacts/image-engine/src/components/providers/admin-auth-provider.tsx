@@ -18,6 +18,7 @@ interface AdminAuthContextValue extends AdminAuthState {
 }
 
 const STORAGE_KEY = 'admin_session_v1';
+const storage = window.localStorage;
 
 // Credentials are verified server-side via /api/admin/login + Supabase + bcrypt.
 // No passwords are stored in the frontend code.
@@ -60,10 +61,10 @@ export function AdminAuthProvider({
     username: null,
   });
 
-  // Restore session from sessionStorage on mount
+  // Restore session from localStorage on mount
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
+      const raw = storage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as AdminAuthState;
         if (parsed.isAuthenticated && parsed.username) {
@@ -81,7 +82,7 @@ export function AdminAuthProvider({
       if (!result.ok) return { error: result.error ?? "Invalid username or password." };
       const next: AdminAuthState = { isAuthenticated: true, username };
       setState(next);
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      storage.setItem(STORAGE_KEY, JSON.stringify(next));
       return { error: null };
     },
     [],
@@ -89,7 +90,7 @@ export function AdminAuthProvider({
 
   const logout = useCallback(() => {
     setState({ isAuthenticated: false, username: null });
-    sessionStorage.removeItem(STORAGE_KEY);
+    storage.removeItem(STORAGE_KEY);
   }, []);
 
   return (
