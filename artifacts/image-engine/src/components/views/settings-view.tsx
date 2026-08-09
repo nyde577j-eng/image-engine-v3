@@ -71,7 +71,6 @@ function SupportLinkIcon({ icon }: { icon: string }) {
 }
 
 const SECTIONS = [
-  { id: 'appearance', labelKey: 'settings.section.appearance', icon: Palette },
   { id: 'notifications', labelKey: 'settings.section.notifications', icon: Bell },
   { id: 'security', labelKey: 'settings.section.security', icon: Shield },
   { id: 'billing', labelKey: 'settings.section.billing', icon: CreditCard },
@@ -83,7 +82,7 @@ const SECTIONS = [
 type SectionId = (typeof SECTIONS)[number]['id'];
 
 export function SettingsView({ initialSection }: { initialSection?: string }) {
-  const [section, setSection] = useState<SectionId>((initialSection as SectionId) ?? 'appearance');
+  const [section, setSection] = useState<SectionId>((initialSection as SectionId) ?? 'notifications');
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, avatarId, setAvatarId, credits, settingsSection, setSettingsSection } = useApp();
   const [selectedAvatar, setSelectedAvatar] = useState(avatarId);
@@ -202,56 +201,6 @@ export function SettingsView({ initialSection }: { initialSection?: string }) {
           animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl border border-border bg-card/40 p-6"
         >
-          {section === 'appearance' && (
-            <div className="space-y-5">
-              <h3 className="font-display text-lg font-bold">{t(locale, 'settings.section.appearance')}</h3>
-              <div>
-                <label className="mb-2 block text-sm font-medium">{t(locale, 'settings.appearance.theme')}</label>
-                <div className="flex gap-3">
-                  {(['dark', 'light'] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setTheme(t)}
-                      className={cn(
-                        'flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium capitalize transition-all',
-                        theme === t
-                          ? 'border-primary/40 bg-primary/10 text-primary'
-                          : 'border-border bg-card/40 text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      {theme === t && <Check className="h-4 w-4" />}
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium">{t(locale, 'settings.appearance.accentColor')}</label>
-                <div className="flex gap-3">
-                  {['amber', 'blue', 'green', 'rose'].map((c) => (
-                    <button
-                      key={c}
-                      className={cn(
-                        'h-10 w-10 rounded-xl border-2 transition-all',
-                        c === 'amber' ? 'border-primary' : 'border-transparent',
-                      )}
-                      style={{
-                        background:
-                          c === 'amber'
-                            ? 'hsl(43 96% 56%)'
-                            : c === 'blue'
-                              ? 'hsl(217 91% 60%)'
-                              : c === 'green'
-                                ? 'hsl(142 71% 45%)'
-                                : 'hsl(350 84% 60%)',
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
           {section === 'notifications' && (
             <div className="space-y-5">
               <h3 className="font-display text-lg font-bold">{t(locale, 'settings.section.notifications')}</h3>

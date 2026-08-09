@@ -71,7 +71,6 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
     { icon: CreditCard, label: t(locale, 'profile.billing'),     section: 'billing',      view: 'settings' as const },
     { icon: KeyRound, label: t(locale, 'profile.apiKeys'),        section: null,           view: 'api' as const },
     { icon: Shield,   label: t(locale, 'profile.security'),       section: 'security',     view: 'settings' as const },
-    { icon: Palette,  label: t(locale, 'profile.appearance'),     section: 'appearance',   view: 'settings' as const },
     { icon: Globe,    label: t(locale, 'profile.language'),        section: 'language',     view: 'settings' as const },
   ] as const;
 
@@ -133,16 +132,6 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
             <span className="text-xs text-muted-foreground">{t(locale, 'topbar.credits')}</span>
           </div>
         )}
-
-        {/* Theme toggle */}
-        <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          aria-label="Toggle theme"
-        >
-          <Sun className="h-5 w-5 dark:hidden" />
-          <Moon className="hidden h-5 w-5 dark:block" />
-        </button>
 
         {/* Notifications */}
         <div className="relative">
