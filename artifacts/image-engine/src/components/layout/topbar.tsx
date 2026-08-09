@@ -231,10 +231,6 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
             <div className={cn('flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br text-sm', AVATAR_MAP[avatarId]?.bg ?? 'from-amber-400 to-orange-500')}>
               {(() => { const Icon = AVATAR_MAP[avatarId]?.icon ?? Zap; return <Icon className="h-4 w-4 text-white" />; })()}
             </div>
-            <div className="hidden text-left leading-none lg:block">
-              <p className="text-xs font-semibold">Alex Kim</p>
-              <p className="text-[10px] text-muted-foreground">Pro Plan</p>
-            </div>
             <ChevronDown
               className={cn(
                 'h-4 w-4 text-muted-foreground transition-transform',
@@ -252,19 +248,6 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
                 transition={{ duration: 0.15 }}
                 className="absolute right-0 top-full z-30 mt-2 w-64 overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
               >
-                {/* User header */}
-                <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-                  <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-lg', AVATAR_MAP[avatarId]?.bg ?? 'from-amber-400 to-orange-500')}>
-                    {(() => { const Icon = AVATAR_MAP[avatarId]?.icon ?? Zap; return <Icon className="h-5 w-5 text-white" />; })()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">Alex Kim</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      alex@lumen.ai
-                    </p>
-                  </div>
-                </div>
-
                 {/* Main menu items */}
                 <div className="p-1">
                   {PROFILE_MENU.map((item) => {
