@@ -319,9 +319,21 @@ router.get("/tts/voices", async (req, res) => {
         like_count?: number;
         samples?: { text: string; audio: string }[];
       }[];
+      accessible_upper_bound?: number;
+      window_limited?: boolean;
+      has_more?: boolean;
     };
 
-    return res.json({ ok: true, voices: data.items ?? [], total: data.total ?? 0 });
+    // استخدم accessible_upper_bound لو موجود (Fish Audio بيحد الـ pagination)
+    // وإلا استخدم total
+    const effectiveTotal = data.accessible_upper_bound ?? data.total ?? 0;
+
+    return res.json({
+      ok: true,
+      voices: data.items ?? [],
+      total: effectiveTotal,
+      has_more: data.has_more ?? false,
+    });
   } catch (err) {
     return res.status(502).json({ ok: false, error: String(err) });
   }

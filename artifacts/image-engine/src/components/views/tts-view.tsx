@@ -28,14 +28,16 @@ type AudioFormat = typeof FORMATS[number];
 
 const LANGUAGES = [
   { value: '', label: 'كل اللغات' },
-  { value: 'en', label: 'English' },
-  { value: 'ar', label: 'العربية' },
-  { value: 'zh', label: '中文' },
-  { value: 'ja', label: '日本語' },
-  { value: 'ko', label: '한국어' },
-  { value: 'fr', label: 'Français' },
-  { value: 'de', label: 'Deutsch' },
-  { value: 'es', label: 'Español' },
+  { value: 'ar', label: '🇸🇦 العربية' },
+  { value: 'en', label: '🇺🇸 English' },
+  { value: 'zh', label: '🇨🇳 中文' },
+  { value: 'ja', label: '🇯🇵 日本語' },
+  { value: 'ko', label: '🇰🇷 한국어' },
+  { value: 'fr', label: '🇫🇷 Français' },
+  { value: 'de', label: '🇩🇪 Deutsch' },
+  { value: 'es', label: '🇪🇸 Español' },
+  { value: 'ru', label: '🇷🇺 Русский' },
+  { value: 'tr', label: '🇹🇷 Türkçe' },
 ];
 
 /* ─── Audio Player Component ─────────────────────────────────────── */
@@ -189,6 +191,7 @@ export function TtsView() {
   const [voicesPage, setVoicesPage] = useState(1);
   const [voicesSearch, setVoicesSearch] = useState('');
   const [voicesLang, setVoicesLang] = useState('');
+  const [voicesHasMore, setVoicesHasMore] = useState(false);
   const [voicesLoading, setVoicesLoading] = useState(false);
   const PAGE_SIZE = 20;
 
@@ -201,10 +204,11 @@ export function TtsView() {
         ...(lang ? { language: lang } : {}),
       });
       const r = await fetch(`/api/tts/voices?${params}`);
-      const data = await r.json() as { ok: boolean; voices: Voice[]; total: number; error?: string };
+      const data = await r.json() as { ok: boolean; voices: Voice[]; total: number; has_more?: boolean; error?: string };
       if (!data.ok) throw new Error(data.error);
       setVoices(data.voices);
       setVoicesTotal(data.total);
+      setVoicesHasMore(data.has_more ?? (data.voices.length === PAGE_SIZE));
     } catch (err) {
       toast({ title: 'خطأ', description: String(err), variant: 'destructive' });
     } finally {
@@ -508,15 +512,18 @@ export function TtsView() {
               )}
 
               {/* Pagination */}
-              {voicesTotal > PAGE_SIZE && (
+              {(voicesTotal > PAGE_SIZE || voicesHasMore) && (
                 <div className="flex items-center justify-between border-t border-border pt-4">
-                  <p className="text-xs text-muted-foreground">{voicesTotal} صوت — صفحة {voicesPage} من {Math.ceil(voicesTotal / PAGE_SIZE)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    صفحة {voicesPage}
+                    {voicesTotal > 0 && ` — ${voicesTotal} صوت`}
+                  </p>
                   <div className="flex gap-2">
                     <button disabled={voicesPage === 1} onClick={() => { const p = voicesPage - 1; setVoicesPage(p); fetchVoices(p, voicesSearch, voicesLang); }}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary/40 disabled:opacity-40">
                       <ChevronRight className="h-4 w-4" />
                     </button>
-                    <button disabled={voicesPage >= Math.ceil(voicesTotal / PAGE_SIZE)} onClick={() => { const p = voicesPage + 1; setVoicesPage(p); fetchVoices(p, voicesSearch, voicesLang); }}
+                    <button disabled={!voicesHasMore && voices.length < PAGE_SIZE} onClick={() => { const p = voicesPage + 1; setVoicesPage(p); fetchVoices(p, voicesSearch, voicesLang); }}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary/40 disabled:opacity-40">
                       <ChevronLeft className="h-4 w-4" />
                     </button>
