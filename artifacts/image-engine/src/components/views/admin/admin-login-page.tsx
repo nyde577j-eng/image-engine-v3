@@ -11,7 +11,7 @@ const shakeVariants = {
   idle: { x: 0 },
   shake: {
     x: [0, -10, 10, -10, 10, -6, 6, -3, 3, 0],
-    transition: { duration: 0.5, ease: 'easeInOut' },
+    transition: { duration: 0.5 },
   },
 };
 
