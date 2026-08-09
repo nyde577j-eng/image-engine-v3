@@ -71,7 +71,6 @@ function SupportLinkIcon({ icon }: { icon: string }) {
 }
 
 const SECTIONS = [
-  { id: 'profile', labelKey: 'settings.section.profile', icon: User },
   { id: 'appearance', labelKey: 'settings.section.appearance', icon: Palette },
   { id: 'notifications', labelKey: 'settings.section.notifications', icon: Bell },
   { id: 'security', labelKey: 'settings.section.security', icon: Shield },
@@ -84,7 +83,7 @@ const SECTIONS = [
 type SectionId = (typeof SECTIONS)[number]['id'];
 
 export function SettingsView({ initialSection }: { initialSection?: string }) {
-  const [section, setSection] = useState<SectionId>((initialSection as SectionId) ?? 'profile');
+  const [section, setSection] = useState<SectionId>((initialSection as SectionId) ?? 'appearance');
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, avatarId, setAvatarId, credits, settingsSection, setSettingsSection } = useApp();
   const [selectedAvatar, setSelectedAvatar] = useState(avatarId);
@@ -203,82 +202,6 @@ export function SettingsView({ initialSection }: { initialSection?: string }) {
           animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl border border-border bg-card/40 p-6"
         >
-          {section === 'profile' && (
-            <div className="space-y-5">
-              <h3 className="font-display text-lg font-bold">{t(locale, 'settings.section.profile')}</h3>
-
-              {/* Current avatar */}
-              <div className="flex items-center gap-4">
-                <AvatarDisplay avatar={AVATARS.find((a) => a.id === savedAvatar)!} size="lg" />
-                <div>
-                  <p className="text-sm font-medium">Profile Avatar</p>
-                  <p className="text-xs text-muted-foreground">Choose from the avatars below</p>
-                </div>
-              </div>
-
-              {/* Avatar picker */}
-              <div>
-                <p className="mb-3 text-sm font-medium">Choose Avatar</p>
-                <div className="flex flex-wrap gap-3">
-                  {AVATARS.map((avatar) => (
-                    <button
-                      key={avatar.id}
-                      onClick={() => setSelectedAvatar(avatar.id)}
-                      className={cn(
-                        'relative h-14 w-14 rounded-2xl transition-all',
-                        selectedAvatar === avatar.id
-                          ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110'
-                          : 'opacity-70 hover:opacity-100 hover:scale-105',
-                      )}
-                    >
-                      <AvatarDisplay avatar={avatar} size="md" />
-                      {selectedAvatar === avatar.id && (
-                        <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
-                          <Check className="h-3 w-3 text-black" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <Field label={t(locale, 'settings.profile.displayName')} value={displayName} onChange={setDisplayName} />
-              <Field label={t(locale, 'settings.profile.email')} value={email} onChange={setEmail} />
-              <Field label={t(locale, 'settings.profile.username')} value={username} onChange={setUsername} />
-              <div className="flex items-center gap-3">
-              <button
-                onClick={async () => {
-                  setProfileSaving(true);
-                  setSavedAvatar(selectedAvatar);
-                  setAvatarId(selectedAvatar);
-                  window.localStorage.setItem('ie_display_name', displayName);
-                  window.localStorage.setItem('ie_username', username);
-                  // Persist to Supabase
-                  const userKey = getUserKey();
-                  await supabase.from('user_settings').upsert({
-                    user_key: userKey,
-                    display_name: displayName,
-                    email,
-                    username,
-                    avatar_id: selectedAvatar,
-                    updated_at: new Date().toISOString(),
-                  }, { onConflict: 'user_key' });
-                  setProfileSaving(false);
-                  setProfileSaved(true);
-                  setTimeout(() => setProfileSaved(false), 2000);
-                }}
-                className="rounded-xl gradient-amber px-4 py-2.5 text-sm font-semibold text-black transition-all hover:glow-amber disabled:opacity-60"
-              >
-                {profileSaving ? 'Saving...' : t(locale, 'settings.profile.saveChanges')}
-              </button>
-              {profileSaved && (
-                <span className="flex items-center gap-1.5 text-sm text-success">
-                  <Check className="h-4 w-4" /> Saved
-                </span>
-              )}
-              </div>
-            </div>
-          )}
-
           {section === 'appearance' && (
             <div className="space-y-5">
               <h3 className="font-display text-lg font-bold">{t(locale, 'settings.section.appearance')}</h3>

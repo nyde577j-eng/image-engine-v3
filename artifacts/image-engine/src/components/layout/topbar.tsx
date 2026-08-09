@@ -68,7 +68,6 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
   ];
 
   const PROFILE_MENU = [
-    { icon: User,     label: t(locale, 'profile.myProfile'),     section: 'profile',      view: 'settings' as const },
     { icon: CreditCard, label: t(locale, 'profile.billing'),     section: 'billing',      view: 'settings' as const },
     { icon: KeyRound, label: t(locale, 'profile.apiKeys'),        section: null,           view: 'api' as const },
     { icon: Shield,   label: t(locale, 'profile.security'),       section: 'security',     view: 'settings' as const },
