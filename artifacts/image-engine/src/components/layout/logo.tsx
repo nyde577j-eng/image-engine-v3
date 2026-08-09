@@ -9,12 +9,12 @@ type BrandLogoProps = {
   forceLight?: boolean;
 };
 
-// اللوجو مربع 1:1 — الارتفاعات محددة لكل حجم
+// الارتفاع لكل حجم — العرض يتحسب أوتوماتيك من نسبة الصورة
 const ICON_HEIGHT: Record<NonNullable<BrandLogoProps['size']>, number> = {
-  sm: 32,
-  md: 40,
-  lg: 56,
-  xl: 72,
+  sm: 28,
+  md: 36,
+  lg: 48,
+  xl: 64,
 };
 
 export function BrandLogo({
@@ -25,25 +25,30 @@ export function BrandLogo({
 }: BrandLogoProps) {
   const h = ICON_HEIGHT[size];
 
-  // اللوجو مربع — لما الـ sidebar مفتوح نعرضه بحجم أكبر قليلاً مع النص
-  // لما مغلق نعرض الأيقونة بس بنفس الحجم
-  const imgClass = cn(
-    'object-contain shrink-0',
-    // invert على dark mode عشان الكتابة السوداء تبقى بيضاء
-    'dark:invert dark:brightness-90',
-    forceLight && 'invert brightness-90',
-  );
-
   return (
     <div className={cn('flex shrink-0 items-center', className)}>
-      <img
-        src={LOGO_ICON}
-        alt="Image Engine Studio"
-        width={h}
-        height={h}
-        className={imgClass}
-        style={{ width: h, height: h }}
-      />
+      {collapsed ? (
+        // لما الـ sidebar مغلق — نعرض الأيقونة بس (الجزء الأيسر من اللوجو)
+        <div
+          style={{ width: h, height: h, overflow: 'hidden' }}
+          className="shrink-0"
+        >
+          <img
+            src={LOGO_ICON}
+            alt="Image Engine Studio"
+            style={{ height: h, width: 'auto', maxWidth: 'none' }}
+            className={cn(forceLight && 'brightness-110')}
+          />
+        </div>
+      ) : (
+        // لما مفتوح — اللوجو كامل بعرض مناسب للـ sidebar
+        <img
+          src={LOGO_ICON}
+          alt="Image Engine Studio"
+          style={{ height: h, width: 'auto', maxWidth: 200 }}
+          className={cn(forceLight && 'brightness-110')}
+        />
+      )}
     </div>
   );
 }
