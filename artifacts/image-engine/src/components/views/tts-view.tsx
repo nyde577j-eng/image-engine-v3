@@ -172,8 +172,8 @@ export function TtsView() {
   useEffect(() => { fetchVoices(1, '', ''); }, [fetchVoices]);
 
   /* ── Generate handler ── */
-  const handleGenerate = async () => {
-    if (!text.trim()) return toast({ title: 'اكتب النص أولاً' });
+  const handleGenerate = async (): Promise<void> => {
+    if (!text.trim()) { toast({ title: 'اكتب النص أولاً' }); return; }
     setGenerating(true);
     if (audioUrl) { URL.revokeObjectURL(audioUrl); setAudioUrl(null); }
     try {
@@ -202,9 +202,9 @@ export function TtsView() {
   };
 
   /* ── Clone handler ── */
-  const handleClone = async () => {
-    if (!cloneText.trim()) return toast({ title: 'اكتب النص أولاً' });
-    if (!cloneFile) return toast({ title: 'ارفع ملف صوتي أولاً' });
+  const handleClone = async (): Promise<void> => {
+    if (!cloneText.trim()) { toast({ title: 'اكتب النص أولاً' }); return; }
+    if (!cloneFile) { toast({ title: 'ارفع ملف صوتي أولاً' }); return; }
     setCloning(true);
     if (cloneAudioUrl) { URL.revokeObjectURL(cloneAudioUrl); setCloneAudioUrl(null); }
     try {
