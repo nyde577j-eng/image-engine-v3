@@ -190,7 +190,7 @@ export function TtsView() {
   const [voicesSearch, setVoicesSearch] = useState('');
   const [voicesLang, setVoicesLang] = useState('');
   const [voicesLoading, setVoicesLoading] = useState(false);
-  const PAGE_SIZE = 12;
+  const PAGE_SIZE = 20;
 
   const fetchVoices = useCallback(async (page: number, search: string, lang: string) => {
     setVoicesLoading(true);
