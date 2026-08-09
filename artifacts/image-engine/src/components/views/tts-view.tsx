@@ -91,25 +91,41 @@ function AudioPlayer({ src, label }: { src: string; label?: string }) {
 }
 
 /* ─── Voice Card ─────────────────────────────────────────────────── */
-function VoiceCard({ voice, selected, onSelect }: { voice: Voice; selected: boolean; onSelect: () => void }) {
+function VoiceCard({
+  voice, selected, onSelect, playingId, onPlay,
+}: {
+  voice: Voice;
+  selected: boolean;
+  onSelect: () => void;
+  playingId: string | null;
+  onPlay: (id: string | null) => void;
+}) {
   const [imgError, setImgError] = useState(false);
-  const [previewing, setPreviewing] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const isPlaying = playingId === voice._id;
 
-  const handlePreview = async (e: React.MouseEvent) => {
+  // لو صوت تاني اتشغّل — وقّف الـ audio الحالي
+  useEffect(() => {
+    if (!isPlaying && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  }, [isPlaying]);
+
+  const handlePreview = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!voice.samples?.[0]?.audio) return;
-    if (previewing) {
+    if (isPlaying) {
       audioRef.current?.pause();
-      setPreviewing(false);
+      onPlay(null);
       return;
     }
-    setPreviewing(true);
+    onPlay(voice._id);
     const audio = audioRef.current;
     if (!audio) return;
     audio.src = voice.samples[0].audio;
-    audio.play().catch(() => setPreviewing(false));
-    audio.onended = () => setPreviewing(false);
+    audio.play().catch(() => onPlay(null));
+    audio.onended = () => onPlay(null);
   };
 
   return (
@@ -149,13 +165,13 @@ function VoiceCard({ voice, selected, onSelect }: { voice: Voice; selected: bool
             onClick={handlePreview}
             className={cn(
               'flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors',
-              previewing
+              isPlaying
                 ? 'bg-primary/20 text-primary'
                 : 'bg-secondary text-muted-foreground hover:bg-secondary/70 hover:text-foreground',
             )}
           >
-            {previewing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-            {previewing ? 'إيقاف' : 'معاينة'}
+            {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+            {isPlaying ? 'إيقاف' : 'معاينة'}
           </button>
         )}
       </div>
@@ -193,9 +209,11 @@ export function TtsView() {
   const [voicesLang, setVoicesLang] = useState('');
   const [voicesHasMore, setVoicesHasMore] = useState(false);
   const [voicesLoading, setVoicesLoading] = useState(false);
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const PAGE_SIZE = 20;
 
   const fetchVoices = useCallback(async (page: number, search: string, lang: string) => {
+    setPlayingVoiceId(null); // وقّف أي صوت شغّال عند تغيير الصفحة
     setVoicesLoading(true);
     try {
       const params = new URLSearchParams({
@@ -506,6 +524,8 @@ export function TtsView() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {voices.map(v => (
                     <VoiceCard key={v._id} voice={v} selected={selectedVoiceId === v._id}
+                      playingId={playingVoiceId}
+                      onPlay={setPlayingVoiceId}
                       onSelect={() => { setSelectedVoiceId(v._id); setSelectedVoiceName(v.title); }} />
                   ))}
                 </div>
