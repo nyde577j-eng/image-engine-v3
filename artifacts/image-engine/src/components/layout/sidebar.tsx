@@ -28,10 +28,16 @@ function AdBanner300({ collapsed, activeView }: { collapsed: boolean; activeView
   useEffect(() => {
     if (collapsed || activeView === 'admin') return;
     if (!ref.current) return;
+
+    // احسب العرض الفعلي للـ container ناقص الـ padding (12px يمين + 12px شمال)
+    const containerWidth = ref.current.parentElement?.offsetWidth ?? 256;
+    const adWidth = Math.max(160, containerWidth - 24); // 24px = padding يمين + شمال
+    const adHeight = Math.round(adWidth * (250 / 300)); // نحافظ على نسبة 300:250
+
     ref.current.innerHTML = '';
 
     const s1 = document.createElement('script');
-    s1.innerHTML = `atOptions = {'key':'1d999c815155d29961fe491bca4e770a','format':'iframe','height':250,'width':300,'params':{}};`;
+    s1.innerHTML = `atOptions = {'key':'1d999c815155d29961fe491bca4e770a','format':'iframe','height':${adHeight},'width':${adWidth},'params':{}};`;
     const s2 = document.createElement('script');
     s2.src = 'https://www.highperformanceformat.com/1d999c815155d29961fe491bca4e770a/invoke.js';
     s2.async = true;
@@ -44,8 +50,12 @@ function AdBanner300({ collapsed, activeView }: { collapsed: boolean; activeView
   if (collapsed || activeView === 'admin') return null;
 
   return (
-    <div className="px-3 pb-2">
-      <div ref={ref} className="overflow-hidden rounded-xl border border-border/30 ad-responsive ad-300" />
+    <div className="px-3 pb-3">
+      <div
+        ref={ref}
+        className="w-full overflow-hidden rounded-xl border border-border/30 bg-secondary/20"
+        style={{ minHeight: 160 }}
+      />
     </div>
   );
 }
