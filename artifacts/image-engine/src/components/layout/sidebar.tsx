@@ -146,8 +146,8 @@ export function Sidebar({
         collapsed ? 'w-[76px]' : 'w-64',
       )}
     >
-      <div className="flex h-16 items-center justify-between px-4">
-        <Logo collapsed={collapsed} size="lg" />
+      <div className="flex h-20 items-center justify-between px-4">
+        <Logo collapsed={collapsed} size="xl" />
       </div>
 
       <nav className="scrollbar-thin flex-1 space-y-1 overflow-y-auto px-3 py-2">

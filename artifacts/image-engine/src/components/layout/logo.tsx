@@ -14,7 +14,7 @@ const ICON_HEIGHT: Record<NonNullable<BrandLogoProps['size']>, number> = {
   sm: 28,
   md: 36,
   lg: 48,
-  xl: 64,
+  xl: 60,
 };
 
 export function BrandLogo({
@@ -41,11 +41,11 @@ export function BrandLogo({
           />
         </div>
       ) : (
-        // لما مفتوح — اللوجو كامل بعرض مناسب للـ sidebar
+        // لما مفتوح — اللوجو كامل بعرض يملأ الـ sidebar
         <img
           src={LOGO_ICON}
           alt="Image Engine Studio"
-          style={{ height: h, width: 'auto', maxWidth: 200 }}
+          style={{ height: h, width: 'auto', maxWidth: 224 }}
           className={cn(forceLight && 'brightness-110')}
         />
       )}
