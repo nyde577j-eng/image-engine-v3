@@ -18,6 +18,7 @@ interface Voice {
   languages?: string[];
   task_count?: number;
   like_count?: number;
+  samples?: { text: string; audio: string }[];
 }
 
 type Tab = 'generate' | 'clone' | 'library';
@@ -89,15 +90,41 @@ function AudioPlayer({ src, label }: { src: string; label?: string }) {
 
 /* ─── Voice Card ─────────────────────────────────────────────────── */
 function VoiceCard({ voice, selected, onSelect }: { voice: Voice; selected: boolean; onSelect: () => void }) {
+  const [imgError, setImgError] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const handlePreview = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!voice.samples?.[0]?.audio) return;
+    if (previewing) {
+      audioRef.current?.pause();
+      setPreviewing(false);
+      return;
+    }
+    setPreviewing(true);
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.src = voice.samples[0].audio;
+    audio.play().catch(() => setPreviewing(false));
+    audio.onended = () => setPreviewing(false);
+  };
+
   return (
     <button onClick={onSelect}
       className={cn(
         'flex flex-col gap-2 rounded-xl border p-3 text-left transition-all hover:border-primary/40',
         selected ? 'border-primary/50 bg-primary/10' : 'border-border bg-card/40',
       )}>
+      <audio ref={audioRef} className="hidden" />
       <div className="flex items-center gap-2">
-        {voice.cover_image ? (
-          <img src={voice.cover_image} alt={voice.title} className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+        {voice.cover_image && !imgError ? (
+          <img
+            src={voice.cover_image}
+            alt={voice.title}
+            className="h-9 w-9 shrink-0 rounded-lg object-cover"
+            onError={() => setImgError(true)}
+          />
         ) : (
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg gradient-amber">
             <Mic className="h-4 w-4 text-black" />
@@ -111,9 +138,25 @@ function VoiceCard({ voice, selected, onSelect }: { voice: Voice; selected: bool
         </div>
         {selected && <div className="h-2 w-2 shrink-0 rounded-full bg-primary" />}
       </div>
-      {voice.task_count != null && (
-        <p className="text-[10px] text-muted-foreground">{voice.task_count.toLocaleString()} استخدام</p>
-      )}
+      <div className="flex items-center justify-between">
+        {voice.task_count != null && (
+          <p className="text-[10px] text-muted-foreground">{voice.task_count.toLocaleString()} استخدام</p>
+        )}
+        {voice.samples?.[0]?.audio && (
+          <button
+            onClick={handlePreview}
+            className={cn(
+              'flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors',
+              previewing
+                ? 'bg-primary/20 text-primary'
+                : 'bg-secondary text-muted-foreground hover:bg-secondary/70 hover:text-foreground',
+            )}
+          >
+            {previewing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+            {previewing ? 'إيقاف' : 'معاينة'}
+          </button>
+        )}
+      </div>
     </button>
   );
 }
