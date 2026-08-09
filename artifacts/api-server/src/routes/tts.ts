@@ -171,6 +171,7 @@ router.post("/tts/generate", async (req, res) => {
     if (!res.headersSent) {
       return res.status(502).json({ ok: false, error: String(err) });
     }
+    return res.end();
   }
 });
 
@@ -259,6 +260,7 @@ router.post("/tts/clone", async (req, res) => {
     if (!res.headersSent) {
       return res.status(502).json({ ok: false, error: String(err) });
     }
+    return res.end();
   }
 });
 
