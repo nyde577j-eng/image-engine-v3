@@ -286,11 +286,10 @@ router.get("/tts/voices", async (req, res) => {
   try {
     const pageNum = Math.max(1, parseInt(page, 10));
     const pageSizeNum = Math.min(50, Math.max(1, parseInt(page_size, 10)));
-    const offset = (pageNum - 1) * pageSizeNum;
 
     const params = new URLSearchParams({
       page_size: String(pageSizeNum),
-      offset: String(offset),
+      page_number: String(pageNum),
       sort_by,
       ...(title ? { title } : {}),
       ...(language ? { language } : {}),
