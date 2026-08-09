@@ -19,22 +19,27 @@ interface AdminAuthContextValue extends AdminAuthState {
 
 const STORAGE_KEY = 'admin_session_v1';
 
-// Hardcoded credentials — swap these for a real backend call later.
-// The architecture is already separated: swap `attemptLogin` below.
-const ADMIN_CREDENTIALS = [
-  { username: 'admin', password: 'admin123' },
-  { username: 'superadmin', password: 'imageengine2024' },
-];
+// Credentials are verified server-side via /api/admin/login + Supabase + bcrypt.
+// No passwords are stored in the frontend code.
 
 async function attemptLogin(
   username: string,
   password: string,
-): Promise<boolean> {
-  // Simulate a network round-trip so the UX feels async.
-  await new Promise((r) => setTimeout(r, 600));
-  return ADMIN_CREDENTIALS.some(
-    (c) => c.username === username && c.password === password,
-  );
+): Promise<{ ok: boolean; error: string | null }> {
+  try {
+    const res = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json() as { ok: boolean; error?: string };
+    if (!res.ok || !data.ok) {
+      return { ok: false, error: data.error ?? "Invalid username or password." };
+    }
+    return { ok: true, error: null };
+  } catch {
+    return { ok: false, error: "Cannot reach auth service. Check your connection." };
+  }
 }
 
 const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
@@ -72,8 +77,8 @@ export function AdminAuthProvider({
 
   const login = useCallback(
     async (username: string, password: string) => {
-      const ok = await attemptLogin(username, password);
-      if (!ok) return { error: 'Invalid username or password.' };
+      const result = await attemptLogin(username, password);
+      if (!result.ok) return { error: result.error ?? "Invalid username or password." };
       const next: AdminAuthState = { isAuthenticated: true, username };
       setState(next);
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
