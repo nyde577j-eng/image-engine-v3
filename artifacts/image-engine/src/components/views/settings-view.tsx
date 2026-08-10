@@ -1,434 +1,226 @@
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Settings,
-  User,
-  Palette,
-  Bell,
-  Shield,
-  CreditCard,
-  Globe,
-  Check,
-  LifeBuoy,
-  BookOpen,
-  ExternalLink,
-  Lock,
-  Ban,
-  Database,
-  Zap,
-  Monitor,
-  Sparkles,
-  Pencil,
-  Images,
-  SlidersHorizontal,
-  Languages,
-  Brush,
-  Waves,
-  Leaf,
-  Flower2,
-  Bot,
-  Star,
-  Gem,
-  Flame,
-  Linkedin,
-  Mail,
-  Phone,
-  Globe2,
+  Bell, Shield, CreditCard, LifeBuoy, BookOpen, Globe, Check,
+  Loader2, ExternalLink, Lock, Database, Monitor, Ban, Zap,
+  Sparkles, Pencil, Images, SlidersHorizontal, Languages,
+  Globe2, Mail, Phone, Linkedin,
 } from 'lucide-react';
 import { SiTelegram, SiFacebook, SiX, SiInstagram, SiYoutube, SiDiscord } from 'react-icons/si';
 import { PageContainer, PageHeader } from './shared';
-import { cn } from '@/lib/utils';
-import { useTheme } from 'next-themes';
 import { useApp } from '@/components/providers/app-provider';
 import { t } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 
-const AVATARS = [
-  { id: 'a1', bg: 'from-violet-500 to-purple-600', icon: Brush },
-  { id: 'a2', bg: 'from-amber-400 to-orange-500', icon: Zap },
-  { id: 'a3', bg: 'from-cyan-400 to-blue-500', icon: Waves },
-  { id: 'a4', bg: 'from-emerald-400 to-green-500', icon: Leaf },
-  { id: 'a5', bg: 'from-rose-400 to-pink-500', icon: Flower2 },
-  { id: 'a6', bg: 'from-slate-400 to-gray-600', icon: Bot },
-  { id: 'a7', bg: 'from-yellow-400 to-amber-500', icon: Star },
-  { id: 'a8', bg: 'from-indigo-400 to-violet-500', icon: Sparkles },
-  { id: 'a9', bg: 'from-teal-400 to-cyan-500', icon: Gem },
-  { id: 'a10', bg: 'from-red-400 to-rose-500', icon: Flame },
-];
+const SECTIONS = [
+  { id: 'notifications', label: 'Notifications',  icon: Bell },
+  { id: 'security',      label: 'Security',        icon: Shield },
+  { id: 'billing',       label: 'Billing',         icon: CreditCard },
+  { id: 'support',       label: 'Support',         icon: LifeBuoy },
+  { id: 'docs',          label: 'Docs',            icon: BookOpen },
+  { id: 'language',      label: 'Language',        icon: Globe },
+] as const;
+type Sec = typeof SECTIONS[number]['id'];
 
-const SUPPORT_ICON_MAP: Record<string, React.ComponentType<{ className?: string; size?: number }>> = {
+const SOCIAL_ICONS: Record<string, React.ComponentType<{ className?: string; size?: number }>> = {
   telegram: SiTelegram, facebook: SiFacebook, twitter: SiX, x: SiX,
   instagram: SiInstagram, youtube: SiYoutube, email: Mail, mail: Mail,
   website: Globe2, linkedin: Linkedin, discord: SiDiscord, phone: Phone,
 };
 
-function SupportLinkIcon({ icon }: { icon: string }) {
+function SocialIcon({ icon }: { icon: string }) {
   const key = icon.toLowerCase().replace(/[^a-z]/g, '');
-  const Icon = SUPPORT_ICON_MAP[key];
-  if (Icon) return <Icon className="h-5 w-5 shrink-0 text-primary" size={20} />;
-  return <Globe2 className="h-5 w-5 shrink-0 text-primary" />;
+  const Icon = SOCIAL_ICONS[key] ?? Globe2;
+  return <Icon className="h-5 w-5 shrink-0 text-[var(--acc)]" size={20} />;
 }
 
-const SECTIONS = [
-  { id: 'notifications', labelKey: 'settings.section.notifications', icon: Bell },
-  { id: 'security', labelKey: 'settings.section.security', icon: Shield },
-  { id: 'billing', labelKey: 'settings.section.billing', icon: CreditCard },
-  { id: 'support', labelKey: 'settings.section.support', icon: LifeBuoy },
-  { id: 'docs', labelKey: 'settings.section.docs', icon: BookOpen },
-  { id: 'language', labelKey: 'settings.section.language', icon: Globe },
-] as const;
+function Toggle({ label, desc, checked, onChange }: { label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 0', borderBottom: '1px dashed var(--line)' }}>
+      <div>
+        <b style={{ fontSize: 14, fontWeight: 500, display: 'block' }}>{label}</b>
+        <span style={{ fontSize: 12.5, color: 'var(--mut)' }}>{desc}</span>
+      </div>
+      <label className="ie-sw">
+        <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} />
+        <i />
+      </label>
+    </div>
+  );
+}
 
-type SectionId = (typeof SECTIONS)[number]['id'];
+function RowLine({ label, desc, right }: { label: string; desc?: string; right: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: '13px 0', borderBottom: '1px dashed var(--line)' }}>
+      <div>
+        <b style={{ fontSize: 14, fontWeight: 500, display: 'block' }}>{label}</b>
+        {desc && <span style={{ fontSize: 12.5, color: 'var(--mut)' }}>{desc}</span>}
+      </div>
+      {right}
+    </div>
+  );
+}
 
 export function SettingsView({ initialSection }: { initialSection?: string }) {
-  const [section, setSection] = useState<SectionId>((initialSection as SectionId) ?? 'notifications');
-  const { theme, setTheme } = useTheme();
-  const { locale, setLocale, avatarId, setAvatarId, credits, settingsSection, setSettingsSection } = useApp();
-  const [selectedAvatar, setSelectedAvatar] = useState(avatarId);
-  const [savedAvatar, setSavedAvatar] = useState(avatarId);
-  const [displayName, setDisplayName] = useState('Alex Kim');
-  const [email, setEmail] = useState('alex@lumen.ai');
-  const [username, setUsername] = useState('@alexkim');
-  const [profileSaved, setProfileSaved] = useState(false);
-  const [profileSaving, setProfileSaving] = useState(false);
+  const { locale, setLocale, credits, settingsSection, setSettingsSection } = useApp();
+  const [section, setSection] = useState<Sec>((initialSection as Sec) ?? 'notifications');
   const [supportLinks, setSupportLinks] = useState<{ id: string; label: string; url: string; icon: string }[]>([]);
-  const [notifications, setNotifications] = useState({
-    generationComplete: true,
-    modelUpdates: true,
-    creditAlerts: false,
-    productNews: false,
-  });
-  const [notifSaving, setNotifSaving] = useState(false);
-  const [notifSaved, setNotifSaved] = useState(false);
+  const [notifs, setNotifs] = useState({ generationComplete: true, modelUpdates: true, creditAlerts: false, productNews: false });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  // Unique browser key used as a pseudo user_id (no auth in this app)
-  const getUserKey = () => {
-    let key = window.localStorage.getItem('ie_user_key');
-    if (!key) {
-      key = `anon_${Math.random().toString(36).slice(2, 11)}`;
-      window.localStorage.setItem('ie_user_key', key);
-    }
-    return key;
-  };
-
-  // Load profile + notifications from Supabase on mount
   useEffect(() => {
-    async function loadSettings() {
-      const userKey = getUserKey();
-      const { data } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_key', userKey)
-        .maybeSingle();
-      if (data) {
-        if (data.display_name)  setDisplayName(data.display_name);
-        if (data.email)         setEmail(data.email);
-        if (data.username)      setUsername(data.username);
-        if (data.avatar_id) {
-          setSavedAvatar(data.avatar_id);
-          setSelectedAvatar(data.avatar_id);
-          setAvatarId(data.avatar_id);
-        }
-        if (data.notifications && typeof data.notifications === 'object') {
-          setNotifications(prev => ({ ...prev, ...(data.notifications as object) }));
-        }
-      } else {
-        // Fall back to localStorage values
-        const storedName = window.localStorage.getItem('ie_display_name');
-        const storedUsername = window.localStorage.getItem('ie_username');
-        if (storedName)     setDisplayName(storedName);
-        if (storedUsername) setUsername(storedUsername);
-      }
-    }
-    loadSettings();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    supabase.from('support_links').select('*').order('sort_order').then(({ data }) => { if (data) setSupportLinks(data); });
   }, []);
 
   useEffect(() => {
-    if (initialSection) setSection(initialSection as SectionId);
+    if (initialSection) setSection(initialSection as Sec);
   }, [initialSection]);
 
-  // Respond to navigation from topbar dropdown
   useEffect(() => {
-    if (settingsSection) {
-      setSection(settingsSection as SectionId);
-      setSettingsSection('');
-    }
+    if (settingsSection) { setSection(settingsSection as Sec); setSettingsSection(''); }
   }, [settingsSection, setSettingsSection]);
 
-  useEffect(() => {
-    supabase.from('support_links').select('*').order('sort_order').then(({ data }) => {
-      if (data) setSupportLinks(data);
-    });
-  }, []);
+  const saveNotifs = async () => {
+    setSaving(true);
+    const key = window.localStorage.getItem('ie_user_key') ?? 'anon';
+    await supabase.from('user_settings').upsert({ user_key: key, notifications: notifs, updated_at: new Date().toISOString() }, { onConflict: 'user_key' });
+    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000);
+  };
 
   return (
     <PageContainer>
-      <PageHeader
-        title={t(locale, 'settings.title')}
-        description={t(locale, 'settings.description')}
-        icon={Settings}
-      />
+      <PageHeader title={t(locale, 'settings.title')} description={t(locale, 'settings.description')} />
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
-        {/* Section nav */}
-        <nav className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
-          {SECTIONS.map((s) => {
+      <div style={{ display: 'grid', gridTemplateColumns: '230px 1fr', gap: 18, alignItems: 'start', marginTop: 6 }} className="settings-layout">
+
+        {/* Side nav */}
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'sticky', top: 86 }}>
+          {SECTIONS.map(s => {
             const Icon = s.icon;
+            const on = section === s.id;
             return (
-              <button
-                key={s.id}
-                onClick={() => setSection(s.id)}
-                className={cn(
-                  'flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
-                  section === s.id
-                    ? 'border border-primary/30 bg-primary/10 text-primary'
-                    : 'border border-transparent text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
-                )}
+              <button key={s.id} onClick={() => setSection(s.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  border: 0, borderRadius: 10,
+                  background: on ? 'var(--ink)' : 'none',
+                  color: on ? 'var(--bg)' : 'var(--mut)',
+                  padding: '10px 12px', fontFamily: 'var(--ui)', fontSize: 13.5, cursor: 'pointer', transition: '.15s', textAlign: 'left',
+                }}
+                onMouseEnter={e => { if (!on) { e.currentTarget.style.background = 'var(--card)'; e.currentTarget.style.color = 'var(--ink)'; } }}
+                onMouseLeave={e => { if (!on) { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--mut)'; } }}
               >
-                <Icon className="h-4 w-4" />
-                {t(locale, s.labelKey)}
+                <Icon style={{ width: 16, height: 16, flexShrink: 0 }} />
+                {s.label}
               </button>
             );
           })}
         </nav>
 
-        {/* Content */}
-        <motion.div
-          key={section}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-border bg-card/40 p-6"
-        >
+        {/* Panel */}
+        <motion.div key={section} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .2 }}
+          className="ie-card" style={{ padding: 22 }}>
+
           {section === 'notifications' && (
-            <div className="space-y-5">
-              <h3 className="font-display text-lg font-bold">{t(locale, 'settings.section.notifications')}</h3>
-              {(
-                [
-                  ['generationComplete', 'Generation Complete', 'Get notified when your image is ready'],
-                  ['modelUpdates', 'Model Updates', 'New model releases and updates'],
-                  ['creditAlerts', 'Credit Alerts', 'Low credit balance warnings'],
-                  ['productNews', 'Product News', 'Feature announcements and tips'],
-                ] as const
-              ).map(([key, label, desc]) => (
-                <Toggle
-                  key={key}
-                  label={label}
-                  desc={desc}
-                  checked={notifications[key]}
-                  onChange={(v) => setNotifications((prev) => ({ ...prev, [key]: v }))}
-                />
-              ))}
-              <div className="flex items-center gap-3 border-t border-border pt-4">
-                <button
-                  onClick={async () => {
-                    setNotifSaving(true);
-                    const userKey = getUserKey();
-                    await supabase.from('user_settings').upsert({
-                      user_key: userKey,
-                      notifications,
-                      updated_at: new Date().toISOString(),
-                    }, { onConflict: 'user_key' });
-                    setNotifSaving(false);
-                    setNotifSaved(true);
-                    setTimeout(() => setNotifSaved(false), 2000);
-                  }}
-                  disabled={notifSaving}
-                  className="rounded-xl gradient-amber px-4 py-2.5 text-sm font-semibold text-black transition-all hover:glow-amber disabled:opacity-60"
-                >
-                  {notifSaving ? 'Saving...' : 'Save Preferences'}
+            <div>
+              <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Notifications</h3>
+              <p style={{ color: 'var(--mut)', fontSize: 13.5, marginBottom: 18 }}>Choose what reaches you.</p>
+              <Toggle label="Batch finished" desc="When a generation completes" checked={notifs.generationComplete} onChange={v => setNotifs(p => ({ ...p, generationComplete: v }))} />
+              <Toggle label="Model updates" desc="New model releases" checked={notifs.modelUpdates} onChange={v => setNotifs(p => ({ ...p, modelUpdates: v }))} />
+              <Toggle label="Credit alerts" desc="Low balance warnings" checked={notifs.creditAlerts} onChange={v => setNotifs(p => ({ ...p, creditAlerts: v }))} />
+              <Toggle label="Product news" desc="Feature announcements" checked={notifs.productNews} onChange={v => setNotifs(p => ({ ...p, productNews: v }))} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
+                <button className="btn ink sm" onClick={saveNotifs} disabled={saving}>
+                  {saving ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : null}
+                  Save Preferences
                 </button>
-                {notifSaved && (
-                  <span className="flex items-center gap-1.5 text-sm text-success">
-                    <Check className="h-4 w-4" /> Saved
-                  </span>
-                )}
+                {saved && <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ok)' }}><Check style={{ width: 14, height: 14 }} />Saved</span>}
               </div>
             </div>
           )}
 
           {section === 'security' && (
-            <div className="space-y-5">
-              <h3 className="font-display text-lg font-bold">{t(locale, 'settings.section.security')}</h3>
-
-              {/* Security status */}
-              <div className="flex items-center gap-3 rounded-xl border border-success/30 bg-success/5 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success/15">
-                  <Shield className="h-5 w-5 text-success" />
-                </div>
+            <div>
+              <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Security</h3>
+              <p style={{ color: 'var(--mut)', fontSize: 13.5, marginBottom: 18 }}>Your session and data protection details.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#e2f6ec', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+                <Shield style={{ width: 20, height: 20, color: 'var(--ok)', flexShrink: 0 }} />
                 <div>
-                  <p className="text-sm font-semibold text-success">Your session is secure</p>
-                  <p className="text-xs text-muted-foreground">All data is encrypted and protected</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ok)' }}>Session is secure</p>
+                  <p style={{ fontSize: 11.5, color: 'var(--mut)' }}>All data encrypted over HTTPS / TLS 1.3</p>
                 </div>
               </div>
-
-              {/* Security tips */}
               {[
-                {
-                  icon: Lock,
-                  title: 'End-to-End Encryption',
-                  desc: 'All images and prompts are transmitted over HTTPS with TLS 1.3 encryption.',
-                },
-                {
-                  icon: Shield,
-                  title: 'No Data Stored Permanently',
-                  desc: 'Generated images are stored temporarily and never shared with third parties.',
-                },
-                {
-                  icon: Database,
-                  title: 'Local Storage Only',
-                  desc: 'Your preferences (theme, avatar, credits) are saved only in your browser — never on a server.',
-                },
-                {
-                  icon: Ban,
-                  title: 'No Tracking',
-                  desc: 'We do not use advertising trackers or sell your data to any third party.',
-                },
-                {
-                  icon: Zap,
-                  title: 'Secure API Connections',
-                  desc: 'All AI generation requests are routed through our secure backend — your API keys are never exposed.',
-                },
-                {
-                  icon: Monitor,
-                  title: 'Browser Security',
-                  desc: 'For best security, keep your browser up to date and avoid using shared or public devices.',
-                },
-              ].map((item) => (
-                <div key={item.title} className="flex gap-4 rounded-xl border border-border bg-card/40 p-4">
-                  <item.icon className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
+                { icon: Lock, t: 'End-to-End Encryption', d: 'All images transmitted over HTTPS with TLS 1.3.' },
+                { icon: Database, t: 'No Permanent Storage', d: 'Preferences saved only in your browser.' },
+                { icon: Ban, t: 'No Tracking', d: 'No advertising trackers or data sales.' },
+                { icon: Zap, t: 'Secure API Connections', d: 'API keys never exposed to the browser.' },
+                { icon: Monitor, t: 'Browser Security', d: 'Keep your browser updated for best security.' },
+              ].map(item => (
+                <div key={item.t} style={{ display: 'flex', gap: 14, padding: '12px 0', borderBottom: '1px dashed var(--line)' }}>
+                  <item.icon style={{ width: 18, height: 18, color: 'var(--acc)', flexShrink: 0, marginTop: 2 }} />
                   <div>
-                    <p className="text-sm font-semibold">{item.title}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{item.desc}</p>
+                    <p style={{ fontSize: 13, fontWeight: 500 }}>{item.t}</p>
+                    <p style={{ fontSize: 12, color: 'var(--mut)', marginTop: 2 }}>{item.d}</p>
                   </div>
                 </div>
               ))}
-
-              {/* Session info */}
-              <div className="rounded-xl border border-border bg-card/40 p-4">
-                <p className="mb-3 text-sm font-semibold">Current Session</p>
-                <div className="space-y-2 text-xs text-muted-foreground">
-                  <div className="flex justify-between">
-                    <span>Browser</span>
-                    <span className="font-medium text-foreground">{navigator.userAgent.split(' ').slice(-2).join(' ').split('/')[0]}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Started</span>
-                    <span className="font-medium text-foreground">{new Date().toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Connection</span>
-                    <span className="flex items-center gap-1 font-medium text-success">
-                      <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                      Encrypted (HTTPS)
-                    </span>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
           {section === 'billing' && (
-            <div className="space-y-5">
-              <h3 className="font-display text-lg font-bold">{t(locale, 'settings.section.billing')}</h3>
-              <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-primary">{t(locale, 'settings.billing.proPlan')}</p>
-                    <p className="text-xs text-muted-foreground">{t(locale, 'settings.billing.planDetails')}</p>
-                  </div>
-                  <button className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium transition-colors hover:bg-secondary/70">
-                    {t(locale, 'settings.billing.manage')}
-                  </button>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl border border-border bg-card/40 p-4">
-                  <p className="text-xs text-muted-foreground">{t(locale, 'settings.billing.creditsRemaining')}</p>
-                  <p className="mt-1 font-display text-2xl font-bold">{credits}</p>
-                </div>
-                <div className="rounded-xl border border-border bg-card/40 p-4">
-                  <p className="text-xs text-muted-foreground">{t(locale, 'settings.billing.nextRenewal')}</p>
-                  <p className="mt-1 font-display text-2xl font-bold">Aug 15</p>
-                </div>
-              </div>
+            <div>
+              <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Billing</h3>
+              <p style={{ color: 'var(--mut)', fontSize: 13.5, marginBottom: 18 }}>Plan and credit balance.</p>
+              <RowLine label="Studio Pro" desc="$29/mo · active" right={<span className="ie-tag ok">active</span>} />
+              <RowLine label="Credits" desc={`${credits} remaining`}
+                right={<button className="btn ghost sm">Top up</button>} />
+              <RowLine label="Next renewal" desc="Aug 15" right={null} />
             </div>
           )}
+
           {section === 'support' && (
-            <div className="space-y-5">
-              <h3 className="font-display text-lg font-bold">Support</h3>
-              <p className="text-sm text-muted-foreground">
-                Need help? Reach us through any of the channels below.
-              </p>
+            <div>
+              <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Support</h3>
+              <p style={{ color: 'var(--mut)', fontSize: 13.5, marginBottom: 18 }}>Reach us through any channel below.</p>
               {supportLinks.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border py-10 text-muted-foreground">
-                  <LifeBuoy className="h-8 w-8 opacity-30" />
-                  <p className="text-sm">No support links available yet</p>
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--mut)', border: '1.5px dashed var(--line2)', borderRadius: 12 }}>
+                  <LifeBuoy style={{ width: 32, height: 32, opacity: .3, margin: '0 auto 8px' }} />
+                  <p style={{ fontSize: 13 }}>No support links yet</p>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {supportLinks.map((link) => (
-                    <a
-                      key={link.id}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between rounded-xl border border-border bg-card/40 p-4 transition-all hover:border-primary/30 hover:bg-card"
-                    >
-                      <div className="flex items-center gap-3">
-                        <SupportLinkIcon icon={link.icon} />
-                        <span className="text-sm font-medium">{link.label}</span>
-                      </div>
-                      <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                    </a>
-                  ))}
-                </div>
-              )}
+              ) : supportLinks.map(link => (
+                <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 12, background: 'var(--panel)', marginBottom: 8, textDecoration: 'none', color: 'var(--ink)', transition: '.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--acc)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <SocialIcon icon={link.icon} />
+                    <span style={{ fontSize: 14, fontWeight: 500 }}>{link.label}</span>
+                  </div>
+                  <ExternalLink style={{ width: 14, height: 14, color: 'var(--mut)' }} />
+                </a>
+              ))}
             </div>
           )}
 
           {section === 'docs' && (
-            <div className="space-y-5">
-              <h3 className="font-display text-lg font-bold">Documentation</h3>
-              <p className="text-sm text-muted-foreground">Learn how to get the most out of Image Engine.</p>
+            <div>
+              <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Documentation</h3>
+              <p style={{ color: 'var(--mut)', fontSize: 13.5, marginBottom: 18 }}>Get the most out of Image Engine.</p>
               {[
-                {
-                  icon: Sparkles,
-                  title: 'Generate Images',
-                  desc: 'Go to the Generate section, write a detailed prompt describing the image you want, choose your settings (model, aspect ratio, quality), then press Generate.',
-                },
-                {
-                  icon: Pencil,
-                  title: 'Edit Images',
-                  desc: 'Go to the Editor section, upload any image, write a description of the change you want (e.g. "add a blue sky background"), then press Edit Image.',
-                },
-                {
-                  icon: Zap,
-                  title: 'Credits System',
-                  desc: 'Every visitor starts with a set number of credits. Each generation or edit costs a certain amount. Credits are stored in your browser.',
-                },
-                {
-                  icon: Images,
-                  title: 'Gallery & History',
-                  desc: 'All your generated images are saved in the Gallery. You can view, favorite, and download them from there.',
-                },
-                {
-                  icon: SlidersHorizontal,
-                  title: 'Advanced Settings',
-                  desc: 'In the Generate section, expand "Generation Settings" to control steps, CFG scale, sampler, and batch count for fine-tuned results.',
-                },
-                {
-                  icon: Languages,
-                  title: 'Language',
-                  desc: 'You can switch the interface language between English and Arabic from Settings → Language.',
-                },
-              ].map((item) => (
-                <div key={item.title} className="flex gap-4 rounded-xl border border-border bg-card/40 p-4">
-                  <item.icon className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
+                { icon: Sparkles, t: 'Generate Images', d: 'Go to Generate, write a detailed prompt, choose your settings, then press Generate.' },
+                { icon: Pencil,   t: 'Edit Images',     d: 'Go to Editor, upload an image, describe the change, then press Apply Edit.' },
+                { icon: Zap,      t: 'Credits System',  d: 'Each visitor starts with credits. Each generation/edit deducts a set amount.' },
+                { icon: Images,   t: 'Gallery',         d: 'All generated images are saved in Gallery for download and reuse.' },
+                { icon: SlidersHorizontal, t: 'Advanced Settings', d: 'In Generate, expand Advanced controls to tune steps, CFG, scheduler.' },
+                { icon: Languages, t: 'Language', d: 'Switch interface language in Settings → Language.' },
+              ].map(item => (
+                <div key={item.t} style={{ display: 'flex', gap: 14, padding: '12px 0', borderBottom: '1px dashed var(--line)' }}>
+                  <item.icon style={{ width: 18, height: 18, color: 'var(--acc)', flexShrink: 0, marginTop: 2 }} />
                   <div>
-                    <p className="text-sm font-semibold">{item.title}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{item.desc}</p>
+                    <p style={{ fontSize: 13, fontWeight: 500 }}>{item.t}</p>
+                    <p style={{ fontSize: 12, color: 'var(--mut)', marginTop: 2 }}>{item.d}</p>
                   </div>
                 </div>
               ))}
@@ -436,22 +228,21 @@ export function SettingsView({ initialSection }: { initialSection?: string }) {
           )}
 
           {section === 'language' && (
-            <div className="space-y-5">
-              <h3 className="font-display text-lg font-bold">{t(locale, 'settings.section.language')}</h3>
-              <p className="text-sm text-muted-foreground">{t(locale, 'settings.language.description')}</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {(['en', 'ar'] as const).map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => setLocale(lang)}
-                    className={cn(
-                      'rounded-2xl border px-4 py-3 text-sm font-medium transition-all',
-                      locale === lang
-                        ? 'border-primary/40 bg-primary/10 text-primary'
-                        : 'border-border bg-card/40 text-muted-foreground hover:border-primary/40 hover:bg-secondary/50 hover:text-foreground',
-                    )}
-                  >
-                    {t(locale, lang === 'en' ? 'settings.language.english' : 'settings.language.arabic')}
+            <div>
+              <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Language</h3>
+              <p style={{ color: 'var(--mut)', fontSize: 13.5, marginBottom: 18 }}>Choose the interface language.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {(['en', 'ar'] as const).map(lang => (
+                  <button key={lang} onClick={() => setLocale(lang)}
+                    style={{
+                      borderRadius: 14, border: locale === lang ? '1px solid rgba(255,77,31,.4)' : '1px solid var(--line2)',
+                      padding: '16px 20px', background: locale === lang ? 'var(--accsoft)' : 'var(--card)',
+                      color: locale === lang ? 'var(--acc2)' : 'var(--mut)',
+                      fontFamily: 'var(--ui)', fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: '.15s',
+                      display: 'flex', alignItems: 'center', gap: 10,
+                    }}>
+                    {locale === lang && <Check style={{ width: 16, height: 16 }} />}
+                    {lang === 'en' ? '🇺🇸 English' : '🇸🇦 العربية'}
                   </button>
                 ))}
               </div>
@@ -459,78 +250,14 @@ export function SettingsView({ initialSection }: { initialSection?: string }) {
           )}
         </motion.div>
       </div>
+
+      <style>{`
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @media(max-width:900px){
+          .settings-layout{ grid-template-columns:1fr !important; }
+          .settings-layout nav{ flex-direction:row; overflow-x:auto; position:static !important; padding-bottom:6px; }
+        }
+      `}</style>
     </PageContainer>
-  );
-}
-
-function AvatarDisplay({ avatar, size = 'md' }: { avatar: typeof AVATARS[0]; size?: 'md' | 'lg' }) {
-  const sizeClass = size === 'lg' ? 'h-16 w-16' : 'h-14 w-14';
-  const iconClass = size === 'lg' ? 'h-7 w-7' : 'h-6 w-6';
-  const Icon = avatar.icon;
-  return (
-    <div className={cn('flex items-center justify-center rounded-2xl bg-gradient-to-br', sizeClass, avatar.bg)}>
-      <Icon className={cn(iconClass, 'text-white')} />
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = 'text',
-}: {
-  label: string;
-  value: string;
-  onChange?: (v: string) => void;
-  type?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-sm font-medium">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        className="h-10 w-full rounded-xl border border-border bg-background/50 px-3 text-sm outline-none transition-colors focus:border-primary/40"
-      />
-    </div>
-  );
-}
-
-function Toggle({
-  label,
-  desc,
-  checked,
-  onChange,
-}: {
-  label: string;
-  desc: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-card/40 p-4">
-      <div>
-        <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">{desc}</p>
-      </div>
-      <button
-        onClick={() => onChange(!checked)}
-        className={cn(
-          'relative h-6 w-11 shrink-0 rounded-full transition-colors',
-          checked ? 'bg-primary' : 'bg-secondary',
-        )}
-      >
-        <motion.span
-          layout
-          transition={{ type: 'spring', stiffness: 500, damping: 32 }}
-          className={cn(
-            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md',
-            checked ? 'left-[22px]' : 'left-0.5',
-          )}
-        />
-      </button>
-    </div>
   );
 }

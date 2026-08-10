@@ -1,408 +1,491 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Wand2,
-  Upload,
-  X,
-  Download,
-  Share2,
-  Loader2,
-  ImageIcon,
-  RotateCcw,
-  Zap,
-  Lock,
-} from 'lucide-react';
-import { PageContainer, PageHeader } from './shared';
-import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/components/providers/app-provider';
-import { ASPECT_RATIOS } from '@/lib/mock-data';
 import { supabase } from '@/lib/supabase';
+
+const TOOLS = [
+  { id: 'select',  label: 'Select',  icon: 'M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5' },
+  { id: 'crop',    label: 'Crop',    icon: 'M6 2v16a2 2 0 0 0 2 2h14M2 6h16a2 2 0 0 1 2 2v14' },
+  { id: 'brush',   label: 'Brush',   icon: 'M3 21c4 0 6-2 7-5l-4-4c-3 1-3 5-3 9zM10 12l8-9 3 3-9 8z' },
+  { id: 'eraser',  label: 'Eraser',  icon: 'M16 3l5 5-11 11H5v-5zM4 21h16' },
+  { id: 'text',    label: 'Text',    icon: 'M4 6V4h16v2M12 4v16M9 20h6' },
+  { id: 'layers',  label: 'Layers',  icon: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5' },
+];
+
+const FILTERS = ['None', 'Noir', 'Chrome', 'Fade', 'Ember'];
+
+const ASPECT_OPTIONS = [
+  { label: '1:1',  w: 1024, h: 1024 },
+  { label: '3:2',  w: 1536, h: 1024 },
+  { label: '2:3',  w: 1024, h: 1536 },
+  { label: '16:9', w: 1536, h: 864  },
+  { label: '9:16', w: 864,  h: 1536 },
+];
 
 export function EditorView() {
   const { toast } = useToast();
   const { credits, deductCredits, editCost, isAdmin } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [uploadedImageName, setUploadedImageName] = useState('');
-  const [prompt, setPrompt] = useState('');
-  const [aspectRatio, setAspectRatio] = useState('1:1');
-  const [isLoading, setIsLoading] = useState(false);
-  const [resultImage, setResultImage] = useState<string | null>(null);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [dragging, setDragging] = useState(false);
 
-  // جيب إعداد allow_custom_size من Supabase
+  const [uploaded, setUploaded]           = useState<string | null>(null);
+  const [uploadedName, setUploadedName]   = useState('');
+  const [result, setResult]               = useState<string | null>(null);
+  const [prompt, setPrompt]               = useState('');
+  const [activeTool, setActiveTool]       = useState('select');
+  const [zoom, setZoom]                   = useState(100);
+  const [dragging, setDragging]           = useState(false);
+  const [isLoading, setIsLoading]         = useState(false);
+  const [activeFilter, setActiveFilter]   = useState('None');
+  const [lbOpen, setLbOpen]               = useState(false);
+  const [aspect, setAspect]               = useState('1:1');
+  const [panelOpen, setPanelOpen]         = useState(false); // mobile panel
+
+  const [exp, setExp] = useState(0);
+  const [con, setCon] = useState(0);
+  const [sat, setSat] = useState(0);
+  const [tmp, setTmp] = useState(0);
+
   const [allowCustomSize, setAllowCustomSize] = useState(false);
   useEffect(() => {
-    supabase
-      .from('feature_settings')
-      .select('config')
-      .eq('id', 'image_editor')
-      .maybeSingle()
+    supabase.from('feature_settings').select('config').eq('id', 'image_editor').maybeSingle()
       .then(({ data }) => {
-        if (data?.config && typeof data.config === 'object') {
+        if (data?.config && typeof data.config === 'object')
           setAllowCustomSize(!!(data.config as Record<string, unknown>).allow_custom_size);
-        }
       });
   }, []);
 
-  const currentRatio = ASPECT_RATIOS.find((r) => r.value === aspectRatio)!;
+  const currentRatio = ASPECT_OPTIONS.find(r => r.label === aspect) ?? ASPECT_OPTIONS[0];
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      toast({ title: 'Invalid file', description: 'Please upload an image file', variant: 'destructive' });
+      toast({ title: 'Invalid file', description: 'Upload an image file', variant: 'destructive' });
       return;
     }
-    setUploadedImageName(file.name);
+    setUploadedName(file.name);
     const reader = new FileReader();
-    reader.onload = (e) => setUploadedImage(e.target?.result as string);
+    reader.onload = e => { setUploaded(e.target?.result as string); setResult(null); };
     reader.readAsDataURL(file);
-    setResultImage(null);
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
+    e.preventDefault(); setDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
   }, []);
 
   const handleEdit = async () => {
-    if (!uploadedImage || !prompt.trim()) return;
-
-    // Check credits before proceeding — الأدمن معفى
+    if (!uploaded)      { toast({ title: 'Upload an image first' }); return; }
+    if (!prompt.trim()) { toast({ title: 'Add a prompt first' }); return; }
     if (!isAdmin && credits < editCost) {
-      toast({
-        title: 'Insufficient credits',
-        description: `You need ${editCost} credits to edit an image. You have ${credits}.`,
-        variant: 'destructive',
-      });
-      return;
+      toast({ title: 'Insufficient credits', variant: 'destructive' }); return;
     }
-
-    setIsLoading(true);
-    setResultImage(null);
-
+    setIsLoading(true); setResult(null);
     try {
       const res = await fetch('/api/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: prompt,
-          imageUrl: uploadedImage,
-          width: currentRatio.w,
-          height: currentRatio.h,
-        }),
+        body: JSON.stringify({ text: prompt, imageUrl: uploaded, width: currentRatio.w, height: currentRatio.h }),
       });
-
-      const data = await res.json() as any;
-
-      if (!data.ok) {
-        toast({ title: 'Edit failed', description: data.error ?? 'Unknown error', variant: 'destructive' });
-        return;
-      }
-
-      // Deduct credits only on success
+      const data = await res.json() as { ok: boolean; imageUrl?: string; imageData?: string; error?: string };
+      if (!data.ok) { toast({ title: 'Edit failed', description: data.error, variant: 'destructive' }); return; }
       deductCredits(editCost);
-
-      if (data.imageData) {
-        setResultImage(`data:image/png;base64,${data.imageData}`);
-      } else if (data.imageUrl) {
-        setResultImage(data.imageUrl);
-      }
-
-      toast({ title: 'Image edited successfully!' });
+      if (data.imageData) setResult(`data:image/png;base64,${data.imageData}`);
+      else if (data.imageUrl) setResult(data.imageUrl);
+      toast({ title: 'Image edited!' });
+      setPanelOpen(false);
     } catch (err) {
       toast({ title: 'Error', description: String(err), variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
-  const handleReset = () => {
-    setUploadedImage(null);
-    setUploadedImageName('');
-    setResultImage(null);
-    setPrompt('');
-  };
+  const imgFilter = `brightness(${100+exp*0.3}%) contrast(${100+con*0.4}%) saturate(${100+sat*0.6}%) sepia(${Math.max(0,tmp)*0.3}%) hue-rotate(${Math.min(0,tmp)*0.2}deg)`;
+  const displayImg = result ?? uploaded;
 
   return (
-    <>
-      <PageContainer>
-        <PageHeader
-          title="AI Image Editor"
-          description="Upload an image and describe the edit you want"
-          icon={Wand2}
+    <div style={{ padding: 'clamp(12px,2vw,24px)', paddingBottom: 80, maxWidth: 1460, margin: '0 auto' }}>
+
+      {/* ══ TOP BAR ══ */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'nowrap', marginBottom:14, overflowX:'auto' }}>
+        {/* File name */}
+        <span className="mic" style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+          {uploadedName || 'No file selected'}
+        </span>
+
+        {/* Upload btn — always visible */}
+        <button className="btn ghost sm" onClick={() => fileInputRef.current?.click()} style={{ flexShrink:0 }}>
+          <svg style={{ width:14,height:14,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+            <path d="M12 21V9M7 14l5-5 5 5M4 3h16"/>
+          </svg>
+          <span className="ed-show-sm">Upload</span>
+        </button>
+
+        {/* Zoom */}
+        <button className="ibtn" onClick={() => setZoom(z=>Math.max(40,z-10))} aria-label="Zoom out">
+          <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
+        </button>
+        <span className="mic" style={{ minWidth:38, textAlign:'center', flexShrink:0 }}>{zoom}%</span>
+        <button className="ibtn" onClick={() => setZoom(z=>Math.min(200,z+10))} aria-label="Zoom in">
+          <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+
+        {/* Export */}
+        {displayImg && (
+          <a href={displayImg} download={`edited-${Date.now()}.png`} className="btn ink sm" style={{ flexShrink:0 }}>
+            <svg style={{ width:14,height:14,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+              <path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>
+            </svg>
+            <span className="ed-show-sm">Export</span>
+          </a>
+        )}
+      </div>
+
+      {/* ══ MOBILE: prompt + edit button (above canvas) ══ */}
+      <div className="ed-mobile-prompt">
+        <textarea
+          className="ie-inp"
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+          placeholder='Describe the edit… e.g. "add sunset sky", "remove background"'
+          rows={2}
+          style={{ resize:'none', marginBottom:8 }}
         />
-
-        <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-          {/* Left: Upload + Controls */}
-          <div className="space-y-4">
-            {/* Upload area */}
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={handleDrop}
-              onClick={() => !uploadedImage && fileInputRef.current?.click()}
-              className={cn(
-                'relative flex min-h-64 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed transition-all',
-                dragging ? 'border-primary bg-primary/5' : 'border-border bg-card/40 hover:border-primary/40',
-                uploadedImage && 'cursor-default',
-              )}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-              />
-
-              {uploadedImage ? (
-                <>
-                  <img
-                    src={uploadedImage}
-                    alt="Uploaded"
-                    className="h-full max-h-72 w-full object-contain"
-                  />
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleReset(); }}
-                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 text-foreground backdrop-blur transition-colors hover:bg-background"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                  <div className="absolute bottom-3 left-3 rounded-lg bg-background/70 px-2 py-1 text-xs text-muted-foreground backdrop-blur">
-                    {uploadedImageName}
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center gap-3 p-8 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-secondary">
-                    <Upload className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Drop image here or click to upload</p>
-                    <p className="mt-1 text-xs text-muted-foreground">PNG, JPG, WEBP supported</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Prompt */}
-            <div className="rounded-2xl border border-border bg-card/40">
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe the edit... e.g. 'Add a sunset sky background', 'Remove the person', 'Change the color to blue'"
-                className="min-h-[100px] w-full resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground/60"
-              />
-              <div className="flex items-center justify-between border-t border-border px-4 py-2">
-                <span className="text-xs text-muted-foreground">{prompt.length} / 5000 chars</span>
-                {prompt && (
-                  <button onClick={() => setPrompt('')} className="text-xs text-muted-foreground hover:text-foreground">
-                    Clear
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Aspect Ratio */}
-            <div className="rounded-2xl border border-border bg-card/40 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Output Size</p>
-                {!allowCustomSize && (
-                  <span className="flex items-center gap-1 rounded-lg bg-secondary px-2 py-1 text-[10px] font-medium text-muted-foreground">
-                    <Lock className="h-3 w-3" />
-                    Fixed by API
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {ASPECT_RATIOS.map((r) => {
-                  const isActive = aspectRatio === r.value;
-                  const isLocked = !allowCustomSize;
-                  return (
-                    <button
-                      key={r.value}
-                      onClick={() => { if (!isLocked) setAspectRatio(r.value); }}
-                      disabled={isLocked}
-                      title={isLocked ? 'Output size is fixed by the API — enable from Admin → Image Editor' : r.label}
-                      className={cn(
-                        'relative flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-all',
-                        isLocked
-                          ? 'cursor-not-allowed border-border bg-card/20 text-muted-foreground/40'
-                          : isActive
-                            ? 'border-primary/40 bg-primary/10 text-primary'
-                            : 'border-border bg-card/40 text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                      )}
-                    >
-                      <span
-                        className="rounded-sm border border-current"
-                        style={{ width: 16, height: 16 * (r.h / r.w), minHeight: 8 }}
-                      />
-                      {r.label}
-                      {isLocked && (
-                        <Lock className="h-3 w-3 shrink-0 opacity-50" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                {allowCustomSize
-                  ? `${currentRatio.w} × ${currentRatio.h}px`
-                  : 'Output size is determined by the editing API'}
-              </p>
-            </div>
-
-            {/* Edit button */}
-            <button
-              onClick={handleEdit}
-              disabled={!uploadedImage || !prompt.trim() || isLoading || (!isAdmin && credits < editCost)}
-              className={cn(
-                'group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl py-4 text-base font-bold transition-all',
-                !uploadedImage || !prompt.trim() || isLoading || (!isAdmin && credits < editCost)
-                  ? 'cursor-not-allowed bg-secondary text-muted-foreground'
-                  : 'gradient-amber text-black hover:glow-amber',
-              )}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Editing image...
-                </>
-              ) : !isAdmin && credits < editCost ? (
-                <>
-                  <Zap className="h-5 w-5" />
-                  Not enough credits ({credits}/{editCost})
-                </>
-              ) : (
-                <>
-                  <Wand2 className="h-5 w-5" />
-                  Edit Image
-                  {editCost > 0 && (
-                    <span className="ml-1 flex items-center gap-0.5 rounded-md bg-black/20 px-1.5 py-0.5 text-xs font-medium">
-                      <Zap className="h-3 w-3" />{editCost}
-                    </span>
-                  )}
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Right: Result */}
-          <div className="relative min-h-64 overflow-hidden rounded-2xl border border-border bg-card/40">
-            {isLoading ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                <div
-                  className="absolute inset-0 animate-pulse"
-                  style={{ background: 'radial-gradient(circle at 50% 50%, hsl(var(--primary) / 0.1), transparent 70%)' }}
-                />
-                <Loader2 className="relative z-10 h-8 w-8 animate-spin text-primary" />
-                <p className="relative z-10 text-sm text-muted-foreground">AI is editing your image...</p>
-              </div>
-            ) : resultImage ? (
-              <>
-                <img
-                  src={resultImage}
-                  alt="Edited result"
-                  className="h-full w-full cursor-zoom-in object-contain transition-transform hover:scale-105"
-                  onClick={() => setLightboxOpen(true)}
-                />
-                <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity hover:opacity-100">
-                  <div className="flex w-full items-center gap-2 p-3">
-                    <button
-                      onClick={() => setLightboxOpen(true)}
-                      className="flex items-center gap-1.5 rounded-lg bg-black/40 px-2.5 py-1.5 text-xs font-medium text-white backdrop-blur"
-                    >
-                      <ImageIcon className="h-3.5 w-3.5" />
-                      View
-                    </button>
-                    <a
-                      href={resultImage}
-                      download={`z-edit-${Date.now()}.png`}
-                      className="flex items-center gap-1.5 rounded-lg bg-black/40 px-2.5 py-1.5 text-xs font-medium text-white backdrop-blur"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      Save
-                    </a>
-                    <button
-                      onClick={() => { setUploadedImage(resultImage); setResultImage(null); setPrompt(''); }}
-                      className="flex items-center gap-1.5 rounded-lg bg-black/40 px-2.5 py-1.5 text-xs font-medium text-white backdrop-blur"
-                      title="Use result as new input"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      Re-edit
-                    </button>
-                  </div>
-                </div>
+        <button
+          className="btn acc"
+          disabled={!uploaded || !prompt.trim() || isLoading || (!isAdmin && credits < editCost)}
+          onClick={handleEdit}
+          style={{ width:'100%', padding:13, fontSize:15, fontWeight:700 }}
+        >
+          {isLoading
+            ? <><div className="ed-spinner" />Editing…</>
+            : <>
+                <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+                  <path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M13 6l3 3"/>
+                </svg>
+                Apply Edit
               </>
-            ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground">
-                <ImageIcon className="h-12 w-12 opacity-20" />
-                <p className="text-sm">Edited image will appear here</p>
-              </div>
+          }
+        </button>
+      </div>
+
+      {/* ══ 3-COLUMN LAYOUT (desktop) / STACKED (mobile) ══ */}
+      <div className="ed-layout">
+
+        {/* ── Tools rail ── */}
+        <div className="ed-tools">
+          {TOOLS.map(tool => (
+            <button key={tool.id}
+              className={`ibtn d${activeTool===tool.id?' on':''}`}
+              onClick={() => { setActiveTool(tool.id); toast({ title:`${tool.label} tool` }); }}
+              aria-label={tool.label} title={tool.label}
+            >
+              <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+                <path d={tool.icon}/>
+              </svg>
+            </button>
+          ))}
+        </div>
+
+        {/* ── Canvas ── */}
+        <div
+          className="ed-canvas"
+          onDragOver={e=>{ e.preventDefault(); setDragging(true); }}
+          onDragLeave={()=>setDragging(false)}
+          onDrop={handleDrop}
+          style={{ border:`1px solid ${dragging?'var(--acc)':'var(--dline)'}` }}
+        >
+          {/* Loading */}
+          {isLoading && (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
+              <div className="ed-spinner" style={{ width:48, height:48 }} />
+              <span className="mic d">PROCESSING EDIT…</span>
+            </div>
+          )}
+
+          {/* Empty */}
+          {!isLoading && !displayImg && (
+            <div onClick={() => fileInputRef.current?.click()} className="ed-drop-zone"
+              style={{ borderColor: dragging?'var(--acc)':'var(--dline)' }}>
+              <svg style={{ width:34,height:34,fill:'none',stroke:'var(--acc)',strokeWidth:1.8 }} viewBox="0 0 24 24">
+                <path d="M12 21V9M7 14l5-5 5 5M4 3h16"/>
+              </svg>
+              <h4 style={{ fontSize:17, fontWeight:500, color:'var(--dtext)' }}>Drop an image here</h4>
+              <p style={{ color:'var(--dmut)', fontSize:13.5 }}>or click — PNG, JPG, WEBP</p>
+              <button className="btn dark sm" type="button">Choose file</button>
+            </div>
+          )}
+
+          {/* Image */}
+          {!isLoading && displayImg && (
+            <>
+              <img src={displayImg} alt="Canvas" onClick={() => setLbOpen(true)}
+                style={{
+                  maxHeight:'55vh', maxWidth:'100%', borderRadius:8,
+                  boxShadow:'0 24px 70px rgba(0,0,0,.55)',
+                  transform:`scale(${zoom/100})`,
+                  filter:imgFilter,
+                  transition:'transform .25s, filter .25s',
+                  cursor:'zoom-in', position:'relative',
+                }}
+              />
+              <button onClick={() => fileInputRef.current?.click()}
+                style={{
+                  position:'absolute', bottom:14, left:'50%', translate:'-50% 0',
+                  background:'rgba(20,19,16,.7)', border:'1px solid var(--dline)',
+                  color:'var(--dmut)', borderRadius:10, padding:'6px 14px',
+                  fontFamily:'var(--mono)', fontSize:11, cursor:'pointer',
+                  backdropFilter:'blur(6px)', letterSpacing:'.08em',
+                }}>
+                CHANGE IMAGE
+              </button>
+            </>
+          )}
+
+          <input ref={fileInputRef} type="file" accept="image/*" style={{ display:'none' }}
+            onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+        </div>
+
+        {/* ── Right panel (desktop only) ── */}
+        <div className="ie-card ed-panel">
+          <div style={{ display:'grid', gap:8 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <span className="mic">Edit Prompt</span>
+              {!uploaded && <span className="mic" style={{ color:'var(--err)', fontSize:9 }}>upload first</span>}
+            </div>
+            <textarea className="ie-inp" value={prompt} onChange={e=>setPrompt(e.target.value)}
+              placeholder='e.g. "add sunset sky background"'
+              style={{ minHeight:88, resize:'vertical' }} />
+
+            {!uploaded && (
+              <button className="btn ghost sm" type="button" onClick={() => fileInputRef.current?.click()} style={{ width:'100%' }}>
+                <svg style={{ width:14,height:14,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 21V9M7 14l5-5 5 5M4 3h16"/></svg>
+                Upload Image
+              </button>
+            )}
+
+            <button className="btn acc"
+              disabled={!uploaded || !prompt.trim() || isLoading || (!isAdmin && credits < editCost)}
+              onClick={handleEdit}
+              style={{ width:'100%', padding:13, fontSize:15, fontWeight:700 }}>
+              {isLoading
+                ? <><div className="ed-spinner" />Editing…</>
+                : <>
+                    <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+                      <path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M13 6l3 3"/>
+                    </svg>
+                    Apply Edit{editCost>0 && !isAdmin && <span style={{ fontSize:11, opacity:.7, marginLeft:4 }}>({editCost} cr)</span>}
+                  </>
+              }
+            </button>
+
+            {result && (
+              <button className="btn ghost sm" type="button" style={{ width:'100%' }}
+                onClick={() => { setUploaded(result); setResult(null); setPrompt(''); }}>
+                <svg style={{ width:14,height:14,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M21 3v6h-6"/><path d="M20.5 9A8.5 8.5 0 1 0 21 12"/></svg>
+                Re-edit result
+              </button>
             )}
           </div>
+
+          <div style={{ borderTop:'1px dashed var(--line2)', paddingTop:14, display:'grid', gap:14, marginTop:4 }}>
+            <span className="mic">Adjustments</span>
+            {[
+              { label:'EXPOSURE',   val:exp, set:setExp },
+              { label:'CONTRAST',   val:con, set:setCon },
+              { label:'SATURATION', val:sat, set:setSat },
+              { label:'TEMP',       val:tmp, set:setTmp },
+            ].map(({ label, val, set }) => (
+              <div key={label} style={{ display:'grid', gap:4 }}>
+                <div style={{ display:'flex', justifyContent:'space-between' }}>
+                  <span className="mic">{label}</span>
+                  <span className="mic">{val}</span>
+                </div>
+                <input type="range" min="-100" max="100" value={val}
+                  onChange={e=>set(+e.target.value)}
+                  style={{ width:'100%', accentColor:'var(--acc)' }} />
+              </div>
+            ))}
+
+            <div>
+              <span className="mic" style={{ display:'block', marginBottom:8 }}>Filters</span>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {FILTERS.map(f => (
+                  <button key={f} className={`chip${activeFilter===f?' on':''}`}
+                    onClick={() => { setActiveFilter(f); toast({ title:`${f} filter` }); }}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button className="btn acc" onClick={() => toast({ title:'AI Upscale ×2' })} style={{ width:'100%' }}>
+              <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+              AI Upscale ×2
+            </button>
+          </div>
         </div>
-      </PageContainer>
+      </div>
+
+      {/* ══ MOBILE: Adjustments FAB + Sheet ══ */}
+      <button className="ed-adj-fab btn acc" onClick={() => setPanelOpen(true)}>
+        <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+          <path d="M4 8h10M18 8h2M16 6v4M4 16h2M10 16h10M8 14v4"/>
+        </svg>
+        Adjustments
+      </button>
+
+      {/* Mobile bottom sheet */}
+      <AnimatePresence>
+        {panelOpen && (
+          <>
+            <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+              onClick={() => setPanelOpen(false)}
+              style={{ position:'fixed',inset:0,zIndex:199,background:'rgba(20,19,16,.45)',backdropFilter:'blur(3px)' }} />
+            <motion.div
+              initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }}
+              transition={{ type:'spring', stiffness:320, damping:30 }}
+              style={{
+                position:'fixed', left:0, right:0, bottom:0, zIndex:200,
+                background:'var(--card)', borderRadius:'20px 20px 0 0',
+                borderTop:'1px solid var(--line)',
+                padding:'14px 18px 32px', maxHeight:'78vh', overflowY:'auto',
+              }}>
+              <div style={{ width:44,height:5,borderRadius:99,background:'var(--line2)',margin:'0 auto 16px' }} />
+              <h3 style={{ fontSize:16, fontWeight:700, marginBottom:14 }}>Adjustments</h3>
+
+              {[
+                { label:'EXPOSURE',   val:exp, set:setExp },
+                { label:'CONTRAST',   val:con, set:setCon },
+                { label:'SATURATION', val:sat, set:setSat },
+                { label:'TEMP',       val:tmp, set:setTmp },
+              ].map(({ label, val, set }) => (
+                <div key={label} style={{ marginBottom:14 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                    <span className="mic">{label}</span>
+                    <span className="mic">{val}</span>
+                  </div>
+                  <input type="range" min="-100" max="100" value={val}
+                    onChange={e=>set(+e.target.value)}
+                    style={{ width:'100%', accentColor:'var(--acc)' }} />
+                </div>
+              ))}
+
+              <div style={{ marginBottom:14 }}>
+                <span className="mic" style={{ display:'block', marginBottom:8 }}>Filters</span>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                  {FILTERS.map(f => (
+                    <button key={f} className={`chip${activeFilter===f?' on':''}`}
+                      onClick={() => setActiveFilter(f)}>{f}</button>
+                  ))}
+                </div>
+              </div>
+
+              <button className="btn acc" onClick={() => { toast({ title:'AI Upscale ×2' }); setPanelOpen(false); }}
+                style={{ width:'100%', marginBottom:10 }}>
+                <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+                AI Upscale ×2
+              </button>
+              <button className="btn ghost sm" onClick={() => setPanelOpen(false)} style={{ width:'100%' }}>Close</button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Lightbox */}
       <AnimatePresence>
-        {lightboxOpen && resultImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm"
-            onClick={() => setLightboxOpen(false)}
-          >
-            <button
-              onClick={() => setLightboxOpen(false)}
-              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-            >
-              <X className="h-5 w-5" />
+        {lbOpen && displayImg && (
+          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+            onClick={() => setLbOpen(false)}
+            style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(20,19,16,.92)',backdropFilter:'blur(4px)',display:'grid',placeItems:'center',padding:18 }}>
+            <button className="ibtn d" onClick={()=>setLbOpen(false)}
+              style={{ position:'absolute',top:14,right:14 }}>
+              <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
             </button>
-            <motion.img
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              src={resultImage}
-              alt="Edited result"
-              className="max-h-[80vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="mt-6 flex gap-3"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <a
-                href={resultImage}
-                download={`z-edit-${Date.now()}.png`}
-                className="flex items-center gap-2 rounded-xl bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur hover:bg-white/20"
-              >
-                <Download className="h-4 w-4" />
-                Download
-              </a>
-              <button
-                onClick={async () => {
-                  try {
-                    if (navigator.share) await navigator.share({ url: resultImage, title: 'Edited Image' });
-                    else await navigator.clipboard.writeText(resultImage);
-                  } catch { /* ignore */ }
-                }}
-                className="flex items-center gap-2 rounded-xl bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur hover:bg-white/20"
-              >
-                <Share2 className="h-4 w-4" />
-                Share
-              </button>
-            </motion.div>
+            <motion.img initial={{ scale:.92,opacity:0 }} animate={{ scale:1,opacity:1 }} exit={{ scale:.92,opacity:0 }}
+              src={displayImg} alt="Preview" onClick={e=>e.stopPropagation()}
+              style={{ maxHeight:'82vh',maxWidth:'92vw',borderRadius:12,objectFit:'contain' }} />
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+
+      {/* ════ RESPONSIVE CSS ════ */}
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .ed-spinner {
+          display: inline-block;
+          width: 18px; height: 18px;
+          border-radius: 50%;
+          border: 2px solid rgba(255,255,255,.3);
+          border-top-color: #fff;
+          animation: spin 1s linear infinite;
+          flex-shrink: 0;
+        }
+
+        .ed-drop-zone {
+          border: 1px dashed var(--dline);
+          border-radius: 16px;
+          padding: 48px 24px;
+          display: flex; flex-direction: column;
+          align-items: center; gap: 12px;
+          cursor: pointer; max-width: 420px;
+          text-align: center; transition: .2s;
+        }
+        .ed-drop-zone:hover { border-color: var(--acc); }
+
+        /* ── Desktop 3-col ── */
+        .ed-layout {
+          display: grid;
+          grid-template-columns: 56px 1fr 280px;
+          gap: 14px;
+          align-items: start;
+        }
+        .ed-tools {
+          display: flex; flex-direction: column; gap: 8px;
+          background: var(--dark); border: 1px solid var(--dline);
+          border-radius: 14px; padding: 8px;
+        }
+        .ed-canvas {
+          background: var(--dark); border-radius: var(--r2);
+          min-height: 480px; display: grid; place-items: center;
+          padding: 24px; overflow: hidden; position: relative;
+          background-image:
+            linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),
+            linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+          background-size: 34px 34px;
+        }
+        .ed-panel { padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+        .ed-mobile-prompt { display: none; }
+        .ed-adj-fab { display: none; }
+        .ed-show-sm { display: inline; }
+
+        /* ── Tablet: hide right panel, show FAB ── */
+        @media (max-width: 1080px) {
+          .ed-layout { grid-template-columns: 56px 1fr; }
+          .ed-panel { display: none; }
+          .ed-adj-fab {
+            display: inline-flex !important;
+            position: fixed; right: 16px; bottom: 90px; z-index: 70;
+            box-shadow: 0 12px 30px rgba(255,77,31,.4);
+          }
+          .ed-mobile-prompt { display: block; margin-bottom: 12px; }
+        }
+
+        /* ── Mobile: tools go horizontal, canvas fills width ── */
+        @media (max-width: 640px) {
+          .ed-layout { grid-template-columns: 1fr; gap: 10px; }
+          .ed-tools {
+            flex-direction: row; overflow-x: auto;
+            padding: 8px; gap: 6px;
+            scrollbar-width: none;
+          }
+          .ed-tools::-webkit-scrollbar { display: none; }
+          .ed-canvas { min-height: 280px; padding: 16px; }
+          .ed-show-sm { display: none; }
+          .ed-adj-fab { bottom: 80px; right: 12px; }
+          .ed-drop-zone { padding: 32px 16px; }
+        }
+      `}</style>
+    </div>
   );
 }

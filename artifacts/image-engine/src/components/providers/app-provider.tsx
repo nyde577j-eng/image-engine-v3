@@ -14,6 +14,8 @@ interface AppContextValue {
   setActiveView: (v: ViewId) => void;
   prompt: string;
   setPrompt: (p: string) => void;
+  theme: 'light' | 'dark';
+  setTheme: (t: 'light' | 'dark') => void;
   negativePrompt: string;
   setNegativePrompt: (p: string) => void;
   selectedModel: string;
@@ -58,8 +60,8 @@ export function useApp() {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activeView, setActiveViewState] = useState<ViewId>(() => {
     const stored = window.localStorage.getItem(VIEW_KEY) as ViewId | null;
-    const valid: ViewId[] = ['generate','editor','gallery','history','collections','workflows','models','api','chat','settings','admin','videos','tts'];
-    return stored && valid.includes(stored) ? stored : 'editor';
+    const valid: ViewId[] = ['home','generate','editor','gallery','history','collections','workflows','models','api','chat','settings','admin','videos','tts'];
+    return stored && valid.includes(stored) ? stored : 'home';
   });
 
   const setActiveView = useCallback((v: ViewId) => {
@@ -78,6 +80,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     new Set(['img-1', 'img-3', 'img-6', 'img-9']),
   );
   const [locale, setLocaleState] = useState<Locale>('en');
+  const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
+    return (window.localStorage.getItem('ie_theme') as 'light' | 'dark') ?? 'light';
+  });
   const [credits, setCredits] = useState<number>(DEFAULT_INITIAL_CREDITS);
   const [generateCost, setGenerateCost] = useState(10);
   const [editCost, setEditCost] = useState(5);
@@ -198,6 +203,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem('locale', locale);
   }, [locale]);
 
+  const setTheme = useCallback((t: 'light' | 'dark') => {
+    setThemeState(t);
+    window.localStorage.setItem('ie_theme', t);
+  }, []);
+
   const setLocale = useCallback((locale: Locale) => {
     setLocaleState(locale);
   }, []);
@@ -236,6 +246,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         toggleFavorite,
         locale,
         setLocale,
+        theme,
+        setTheme,
         credits,
         deductCredits,
         generateCost,

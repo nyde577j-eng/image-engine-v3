@@ -1,7 +1,9 @@
-
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
+/* ── PageHeader ────────────────────────────────────────────────────
+   نفس الشكل السابق — الـ views الأخرى تستدعيه
+────────────────────────────────────────────────────────────────── */
 export function PageHeader({
   title,
   description,
@@ -14,27 +16,29 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
+    <div className="vhead">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {Icon && (
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card/60">
-            <Icon className="h-5 w-5 text-primary" />
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: 'var(--accsoft)', display: 'grid', placeItems: 'center', flexShrink: 0,
+          }}>
+            <Icon className="h-5 w-5 text-[var(--acc)]" />
           </div>
         )}
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
-            {title}
-          </h1>
-          {description && (
-            <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
-          )}
+          <h2>{title}</h2>
+          {description && <p>{description}</p>}
         </div>
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{actions}</div>}
     </div>
   );
 }
 
+/* ── PageContainer ─────────────────────────────────────────────────
+   wrapper مع padding يطابق التصميم الجديد
+────────────────────────────────────────────────────────────────── */
 export function PageContainer({
   children,
   className,
@@ -44,15 +48,26 @@ export function PageContainer({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className={cn('mx-auto w-full max-w-[1600px] px-4 py-6 md:px-8 md:py-8', className)}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
+      style={{
+        padding: 'clamp(16px,3vw,30px)',
+        paddingBottom: 50,
+        maxWidth: 1460,
+        margin: '0 auto',
+        width: '100%',
+      }}
+      className={cn(className)}
     >
       {children}
     </motion.div>
   );
 }
 
+/* ── Card ──────────────────────────────────────────────────────────
+   بطاقة خفيفة مع border — تستخدمها views كثيرة
+────────────────────────────────────────────────────────────────── */
 export function Card({
   children,
   className,
@@ -65,9 +80,8 @@ export function Card({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-border bg-card/50 backdrop-blur-sm',
-        hover &&
-          'transition-all duration-300 hover:border-primary/30 hover:bg-card/80 hover:glow-soft',
+        'ie-card',
+        hover && 'transition-all hover:-translate-y-0.5 hover:shadow-md',
         className,
       )}
     >

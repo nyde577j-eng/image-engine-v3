@@ -1,43 +1,47 @@
-
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/components/providers/app-provider';
-import { GenerateView } from './generate-view';
-import { EditorView } from './editor-view';
-import { GalleryView } from './gallery-view';
-import { HistoryView } from './history-view';
+import { HomeView }        from './home-view';
+import { GenerateView }    from './generate-view';
+import { EditorView }      from './editor-view';
+import { GalleryView }     from './gallery-view';
+import { HistoryView }     from './history-view';
 import { CollectionsView } from './collections-view';
-import { WorkflowsView } from './workflows-view';
-import { ModelsView } from './models-view';
-import { ApiView } from './api-view';
-import { SettingsView } from './settings-view';
-import { AdminView } from './admin/admin-view';
-import { ChatView } from './chat-view';
-import { VideosView } from './videos-view';
-import { TtsView } from './tts-view';
+import { WorkflowsView }   from './workflows-view';
+import { ModelsView }      from './models-view';
+import { ApiView }         from './api-view';
+import { SettingsView }    from './settings-view';
+import { AdminView }       from './admin/admin-view';
+import { ChatView }        from './chat-view';
+import { VideosView }      from './videos-view';
+import { TtsView }         from './tts-view';
 import type { ViewId } from '@/lib/types';
 
 const VIEWS: Record<ViewId, React.ComponentType> = {
-  generate: GenerateView,
-  editor: EditorView,
-  gallery: GalleryView,
-  history: HistoryView,
+  home:        HomeView,
+  generate:    GenerateView,
+  editor:      EditorView,
+  gallery:     GalleryView,
+  history:     HistoryView,
   collections: CollectionsView,
-  workflows: WorkflowsView,
-  models: ModelsView,
-  api: ApiView,
-  chat: ChatView,
-  settings: SettingsView,
-  admin: AdminView,
-  videos: VideosView,
-  tts: TtsView,
+  workflows:   WorkflowsView,
+  models:      ModelsView,
+  api:         ApiView,
+  chat:        ChatView,
+  settings:    SettingsView,
+  admin:       AdminView,
+  videos:      VideosView,
+  tts:         TtsView,
 };
 
 export function ViewRouter() {
   const { activeView } = useApp();
-  const View = VIEWS[activeView];
+  const View = VIEWS[activeView] ?? HomeView;
 
   return (
-    <div className="h-full overflow-y-auto scrollbar-thin">
+    <div
+      style={{ height: '100%', overflowY: 'auto', scrollbarWidth: 'thin' }}
+      className="scrollbar-thin"
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={activeView}
@@ -45,7 +49,7 @@ export function ViewRouter() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="min-h-full"
+          style={{ minHeight: '100%' }}
         >
           <View />
         </motion.div>

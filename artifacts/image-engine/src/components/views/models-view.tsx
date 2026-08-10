@@ -1,146 +1,97 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Boxes, Search, Heart, Upload, Check, Loader2, Star, Zap } from 'lucide-react';
+import { Boxes, Search, Check, Loader2, Star, Zap, Upload } from 'lucide-react';
 import { PageContainer, PageHeader } from './shared';
-import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useApp } from '@/components/providers/app-provider';
 import { useToast } from '@/hooks/use-toast';
 import { MODELS } from '@/lib/mock-data';
 
 interface ImageProvider {
-  id: string;
-  name: string;
-  provider_type: string;
-  base_url: string;
-  model_name: string;
-  enabled: boolean;
-  is_default: boolean;
-  notes: string;
-  created_at: string;
+  id: string; name: string; provider_type: string; base_url: string;
+  model_name: string; enabled: boolean; is_default: boolean; notes: string; created_at: string;
 }
 
-// Map provider_type to a human-friendly category label
 const TYPE_LABELS: Record<string, string> = {
-  gemini:       'Google Gemini',
-  pollinations: 'Pollinations',
-  openrouter:   'OpenRouter',
-  openai:       'OpenAI',
-  stability:    'Stability AI',
-  fal:          'fal.ai',
-  replicate:    'Replicate',
-  comfyui:      'ComfyUI',
-  custom:       'Custom',
+  gemini: 'Google Gemini', pollinations: 'Pollinations', openrouter: 'OpenRouter',
+  openai: 'OpenAI', stability: 'Stability AI', fal: 'fal.ai',
+  replicate: 'Replicate', comfyui: 'ComfyUI', custom: 'Custom',
 };
-
-const TYPE_FILTERS = ['all', 'gemini', 'openai', 'stability', 'fal', 'replicate', 'pollinations', 'comfyui', 'custom'] as const;
-type TypeFilter = (typeof TYPE_FILTERS)[number];
 
 export function ModelsView() {
   const { toast } = useToast();
   const { setActiveView } = useApp();
   const [providers, setProviders] = useState<ImageProvider[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<TypeFilter>('all');
+  const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [activeId, setActiveId] = useState<string>('');
-  const [settingDefault, setSettingDefault] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState('');
+  const [settingId, setSettingId] = useState<string | null>(null);
 
-  const fetchProviders = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('image_providers')
-        .select('*')
-        .eq('enabled', true)
-        .order('is_default', { ascending: false });
-
+      const { data, error } = await supabase.from('image_providers').select('*').eq('enabled', true).order('is_default', { ascending: false });
       if (!error && data && data.length > 0) {
         const list = data as ImageProvider[];
         setProviders(list);
-        const def = list.find((p) => p.is_default) ?? list[0];
-        setActiveId(def.id);
-      } else {
-        // Supabase empty or unavailable — show mock data
-        setProviders([]);
-      }
-    } catch {
-      setProviders([]);
-    }
+        setActiveId((list.find(p => p.is_default) ?? list[0]).id);
+      } else { setProviders([]); }
+    } catch { setProviders([]); }
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchProviders(); }, [fetchProviders]);
+  useEffect(() => { load(); }, [load]);
 
-  const handleSetDefault = async (p: ImageProvider) => {
-    setSettingDefault(p.id);
-    try {
-      // unset all defaults then set the chosen one
-      await supabase.from('image_providers').update({ is_default: false }).neq('id', '');
-      await supabase.from('image_providers').update({ is_default: true }).eq('id', p.id);
-      setActiveId(p.id);
-      toast({ title: `${p.name} — تم تعيينه كنموذج افتراضي` });
-      fetchProviders();
-    } catch (err) {
-      toast({ title: 'خطأ', description: String(err), variant: 'destructive' });
-    } finally {
-      setSettingDefault(null);
-    }
-  };
+  const presentTypes = Array.from(new Set(providers.map(p => p.provider_type)));
 
-  // Visible types for filter tabs (only those that have providers)
-  const presentTypes = Array.from(new Set(providers.map((p) => p.provider_type)));
-
-  const visibleProviders = providers.filter((p) => {
+  const visible = providers.filter(p => {
     if (filter !== 'all' && p.provider_type !== filter) return false;
     if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.model_name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  // ── Fallback: no Supabase data — show mock models (read-only) ──
+  const setDefault = async (p: ImageProvider) => {
+    setSettingId(p.id);
+    try {
+      await supabase.from('image_providers').update({ is_default: false }).neq('id', '');
+      await supabase.from('image_providers').update({ is_default: true }).eq('id', p.id);
+      setActiveId(p.id);
+      toast({ title: `${p.name} — set as default` });
+      load();
+    } catch (err) { toast({ title: 'Error', description: String(err), variant: 'destructive' }); }
+    finally { setSettingId(null); }
+  };
+
+  /* ── Fallback: no Supabase data ── */
   if (!loading && providers.length === 0) {
     return (
       <PageContainer>
-        <PageHeader
-          title="Models"
-          description="Manage your image generation providers"
-          icon={Boxes}
-          actions={
-            <button
-              onClick={() => setActiveView('admin')}
-              className="flex items-center gap-2 rounded-xl gradient-amber px-4 py-2 text-sm font-semibold text-black transition-all hover:glow-amber"
-            >
-              <Upload className="h-4 w-4" />
-              Add Provider
-            </button>
-          }
-        />
-        <div className="mt-4 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-xs text-warning">
-          لم يتم إضافة أي نماذج — اذهب إلى <span className="font-semibold">Admin → Image Providers</span> لإضافة provider
+        <PageHeader title="Models" description="Pick the right engine for the job" icon={Boxes}
+          actions={<button className="btn ink sm" onClick={() => setActiveView('admin')}><Upload className="h-4 w-4 mr-1" />Add Provider</button>} />
+        <div style={{ background: '#fdf3dc', border: '1px solid #e8c94c', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: 'var(--warn)', marginBottom: 18 }}>
+          No models added — go to <strong>Admin → Image Providers</strong>
         </div>
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mgrid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: 16 }}>
           {MODELS.map((m, i) => (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.05, 0.3) }}
-              className="rounded-2xl border border-border bg-card/40 p-5 opacity-60"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-amber text-black">
-                  <Boxes className="h-6 w-6" />
-                </div>
-                <span className="rounded-lg bg-secondary px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {m.type}
-                </span>
+            <motion.div key={m.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+              className="ie-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14, opacity: .6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                <div><h4 style={{ fontSize: 16, fontWeight: 700 }}>{m.name}</h4><span className="mic">{m.base}</span></div>
+                <span className="ie-tag dim">{m.type}</span>
               </div>
-              <h3 className="mt-4 font-display text-base font-bold tracking-tight">{m.name}</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">Base: {m.base}</p>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {m.tags.map((tag) => (
-                  <span key={tag} className="rounded-md border border-border bg-secondary/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{tag}</span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {m.tags.map(tag => <span key={tag} className="ie-tag dim">{tag}</span>)}
+              </div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {[['DOWNLOADS', Math.round(m.downloads / 1000)], ['LIKES', Math.round(m.likes / 100)]].map(([lbl, val]) => (
+                  <div key={String(lbl)} style={{ display: 'grid', gridTemplateColumns: '52px 1fr 34px', alignItems: 'center', gap: 10, fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--mut)' }}>
+                    <span>{lbl}</span>
+                    <div style={{ height: 4, borderRadius: 99, background: 'var(--line)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${val}%`, background: 'var(--ink)', borderRadius: 99 }} />
+                    </div>
+                    <span>{val}</span>
+                  </div>
                 ))}
               </div>
             </motion.div>
@@ -152,142 +103,74 @@ export function ModelsView() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Models"
-        description={`${visibleProviders.length} image provider${visibleProviders.length !== 1 ? 's' : ''} configured`}
-        icon={Boxes}
-        actions={
-          <button
-            onClick={() => setActiveView('admin')}
-            className="flex items-center gap-2 rounded-xl gradient-amber px-4 py-2 text-sm font-semibold text-black transition-all hover:glow-amber"
-          >
-            <Upload className="h-4 w-4" />
-            Add Provider
-          </button>
-        }
-      />
+      <PageHeader title="Models" description={`${visible.length} provider${visible.length !== 1 ? 's' : ''} configured`} icon={Boxes}
+        actions={<button className="btn ink sm" onClick={() => setActiveView('admin')}><Upload className="h-4 w-4 mr-1" />Add Provider</button>} />
 
       {/* Filters */}
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search providers..."
-            className="h-10 w-full rounded-xl border border-border bg-card/50 pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary/40"
-          />
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20, alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
+          <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: 'var(--mut)' }} />
+          <input className="ie-inp" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search providers…" style={{ paddingLeft: 36 }} />
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={cn(
-              'rounded-xl border px-3 py-2 text-sm font-medium capitalize transition-all',
-              filter === 'all'
-                ? 'border-primary/40 bg-primary/10 text-primary'
-                : 'border-border bg-card/40 text-muted-foreground hover:text-foreground',
-            )}
-          >
-            All
-          </button>
-          {presentTypes.map((type) => (
-            <button
-              key={type}
-              onClick={() => setFilter(type as TypeFilter)}
-              className={cn(
-                'rounded-xl border px-3 py-2 text-sm font-medium capitalize transition-all',
-                filter === type
-                  ? 'border-primary/40 bg-primary/10 text-primary'
-                  : 'border-border bg-card/40 text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {TYPE_LABELS[type] ?? type}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {['all', ...presentTypes].map(t => (
+            <button key={t} className={`chip${filter === t ? ' on' : ''}`} onClick={() => setFilter(t)}>
+              {t === 'all' ? 'All' : (TYPE_LABELS[t] ?? t)}
             </button>
           ))}
         </div>
       </div>
 
       {loading ? (
-        <div className="mt-16 flex flex-col items-center justify-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm">Loading providers...</p>
-        </div>
-      ) : visibleProviders.length === 0 ? (
-        <div className="mt-16 flex flex-col items-center justify-center gap-3 text-muted-foreground">
-          <Boxes className="h-12 w-12 opacity-40" />
-          <p>لا توجد نتائج</p>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2px solid var(--acc)', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
         </div>
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {visibleProviders.map((p, i) => {
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: 16 }}>
+          {visible.map((p, i) => {
             const isActive = activeId === p.id;
-            const isSettingThis = settingDefault === p.id;
-            const isFree = p.provider_type === 'pollinations';
-
             return (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.05, 0.3) }}
+              <motion.div key={p.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                 whileHover={{ y: -2 }}
-                className={cn(
-                  'group rounded-2xl border bg-card/40 p-5 transition-all hover:glow-soft',
-                  isActive ? 'border-primary/40' : 'border-border hover:border-primary/30',
-                )}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-amber text-black">
-                    <Boxes className="h-6 w-6" />
+                className="ie-card"
+                style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14, border: isActive ? '1px solid rgba(255,77,31,.4)' : '' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  <div>
+                    <h4 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-.01em' }}>{p.name}</h4>
+                    <span className="mic">{p.model_name}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    {isFree && (
-                      <span className="flex items-center gap-0.5 rounded-lg bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-500">
-                        <Zap className="h-2.5 w-2.5" />Free
-                      </span>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {p.provider_type === 'pollinations' && (
+                      <span style={{ background: '#e2f6ec', color: 'var(--ok)', fontFamily: 'var(--mono)', fontSize: 10, padding: '3px 8px', borderRadius: 6 }}>FREE</span>
                     )}
                     {p.is_default && (
-                      <span className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">
-                        <Star className="h-2.5 w-2.5 fill-current" />Default
+                      <span className="ie-tag ok" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Star style={{ width: 10, height: 10, fill: 'currentColor' }} /> Default
                       </span>
                     )}
-                    <span className="rounded-lg bg-secondary px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {TYPE_LABELS[p.provider_type] ?? p.provider_type}
-                    </span>
+                    <span className="ie-tag dim">{TYPE_LABELS[p.provider_type] ?? p.provider_type}</span>
                   </div>
                 </div>
-
-                <h3 className="mt-4 font-display text-base font-bold tracking-tight">{p.name}</h3>
-                <p className="mt-0.5 font-mono text-xs text-muted-foreground">{p.model_name}</p>
-                {p.notes && (
-                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{p.notes}</p>
-                )}
-
-                <div className="mt-4 flex items-center gap-2 border-t border-border/50 pt-4">
-                  <button
-                    onClick={() => handleSetDefault(p)}
-                    disabled={isSettingThis || isActive}
-                    className={cn(
-                      'flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all',
-                      isActive
-                        ? 'bg-primary/15 text-primary cursor-default'
-                        : 'bg-secondary text-foreground hover:bg-secondary/70 disabled:opacity-50',
-                    )}
-                  >
-                    {isSettingThis ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" />Setting...</>
-                    ) : isActive ? (
-                      <><Check className="h-3.5 w-3.5" />Active</>
-                    ) : (
-                      'Set as Default'
-                    )}
-                  </button>
-                </div>
+                {p.notes && <p style={{ fontSize: 12, color: 'var(--mut)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.notes}</p>}
+                <button
+                  onClick={() => setDefault(p)}
+                  disabled={settingId === p.id || isActive}
+                  className={isActive ? 'btn ghost sm' : 'btn ink sm'}
+                  style={{ width: '100%' }}
+                >
+                  {settingId === p.id
+                    ? <><Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} />Setting…</>
+                    : isActive
+                    ? <><Check style={{ width: 14, height: 14 }} />Active</>
+                    : 'Set as Default'
+                  }
+                </button>
               </motion.div>
             );
           })}
         </div>
       )}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </PageContainer>
   );
 }
