@@ -524,6 +524,16 @@ function ModelSelector({
 /* ── Main ───────────────────────────────────────────────────────── */
 const STORAGE_KEY = 'chat_messages';
 
+/* Unique key per browser — ensures chat session privacy */
+function getUserKey(): string {
+  let key = window.localStorage.getItem('ie_user_key');
+  if (!key) {
+    key = `u_${Math.random().toString(36).slice(2, 11)}_${Date.now().toString(36)}`;
+    window.localStorage.setItem('ie_user_key', key);
+  }
+  return key;
+}
+
 export function ChatView() {
   const { toast } = useToast();
 
@@ -571,7 +581,8 @@ export function ChatView() {
   async function fetchSessions() {
     setSessionsLoading(true);
     try {
-      const r = await fetch('/api/chat/sessions');
+      const userKey = getUserKey();
+      const r = await fetch(`/api/chat/sessions?user_key=${encodeURIComponent(userKey)}`);
       const data = await r.json() as { ok: boolean; sessions?: ChatSession[] };
       if (data.ok) setSessions(data.sessions ?? []);
     } catch {
@@ -664,7 +675,7 @@ export function ChatView() {
         const r = await fetch('/api/chat/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: trimmed.slice(0, 80) }),
+          body: JSON.stringify({ title: trimmed.slice(0, 80), user_key: getUserKey() }),
         });
         const d = await r.json() as { ok: boolean; session?: ChatSession };
         if (d.ok && d.session) {

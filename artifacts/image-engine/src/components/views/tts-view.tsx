@@ -1,51 +1,54 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Mic, Play, Pause, Download, Search, Upload, X,
-  Loader2, Volume2, RefreshCw, ChevronLeft, ChevronRight,
-  Wand2, AudioLines, Globe, Users,
-} from 'lucide-react';
-import { PageContainer, PageHeader } from './shared';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-/* ─── Types ──────────────────────────────────────────────────────── */
 interface Voice {
-  _id: string;
-  title: string;
-  description?: string;
-  cover_image?: string;
-  languages?: string[];
+  _id: string; title: string; description?: string;
+  cover_image?: string; languages?: string[];
   task_count?: number;
-  like_count?: number;
   samples?: { text: string; audio: string }[];
 }
 
-type Tab = 'generate' | 'clone' | 'library';
-
 const FORMATS = ['mp3', 'wav', 'opus'] as const;
-type AudioFormat = typeof FORMATS[number];
+type Fmt = typeof FORMATS[number];
 
-const LANGUAGES = [
-  { value: '', label: 'كل اللغات' },
-  { value: 'ar', label: '🇸🇦 العربية' },
+const LANGS = [
+  { value: '', label: 'All languages' },
+  { value: 'ar', label: '🇸🇦 Arabic' },
   { value: 'en', label: '🇺🇸 English' },
   { value: 'zh', label: '🇨🇳 中文' },
   { value: 'ja', label: '🇯🇵 日本語' },
-  { value: 'ko', label: '🇰🇷 한국어' },
   { value: 'fr', label: '🇫🇷 Français' },
   { value: 'de', label: '🇩🇪 Deutsch' },
   { value: 'es', label: '🇪🇸 Español' },
-  { value: 'ru', label: '🇷🇺 Русский' },
   { value: 'tr', label: '🇹🇷 Türkçe' },
 ];
 
-/* ─── Audio Player Component ─────────────────────────────────────── */
-function AudioPlayer({ src, label }: { src: string; label?: string }) {
+/* ── Waveform bars for playing audio ─────────────────────────────── */
+function WaveformBars({ playing, count = 36 }: { playing: boolean; count?: number }) {
+  return (
+    <div style={{ flex:1, display:'flex', alignItems:'center', gap:3, height:34, overflow:'hidden' }}>
+      {Array.from({ length: count }, (_, k) => (
+        <div key={k} style={{
+          flex:1, background: playing ? 'var(--acc)' : 'var(--line2)',
+          borderRadius:2,
+          height: playing ? undefined : `${18 + ((k * 37) % 64)}%`,
+          animation: playing ? `wv 0.9s ease-in-out ${k * 40}ms infinite alternate` : 'none',
+          transition: 'background .2s',
+        }} />
+      ))}
+    </div>
+  );
+}
+
+/* ── Audio card (result row) ─────────────────────────────────────── */
+function AudioCard({ url, name, voice, duration, onDelete }: {
+  url: string; name: string; voice: string; duration: string; onDelete: () => void;
+}) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [dur, setDur] = useState(0);
 
   const toggle = () => {
     if (!audioRef.current) return;
@@ -53,508 +56,316 @@ function AudioPlayer({ src, label }: { src: string; label?: string }) {
     else { audioRef.current.play(); setPlaying(true); }
   };
 
-  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const fmt = (s: number) => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-3">
-      <audio
-        ref={audioRef}
-        src={src}
+    <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }}
+      className="ie-card"
+      style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px' }}>
+      <audio ref={audioRef} src={url}
         onTimeUpdate={() => setProgress(audioRef.current?.currentTime ?? 0)}
-        onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
-        onEnded={() => setPlaying(false)}
-      />
-      <button onClick={toggle} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full gradient-amber text-black">
-        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        onLoadedMetadata={() => setDur(audioRef.current?.duration ?? 0)}
+        onEnded={() => setPlaying(false)} />
+
+      {/* Play button */}
+      <button onClick={toggle}
+        style={{ width:44, height:44, borderRadius:'50%', background:'var(--ink)', color:'var(--bg)', border:0, display:'grid', placeItems:'center', flexShrink:0, cursor:'pointer', transition:'.15s' }}
+        onMouseEnter={e => { e.currentTarget.style.background='var(--acc)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background='var(--ink)'; }}>
+        {playing
+          ? <svg style={{ width:16,height:16,fill:'currentColor' }} viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          : <svg style={{ width:16,height:16,fill:'currentColor' }} viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        }
       </button>
-      <div className="min-w-0 flex-1">
-        {label && <p className="mb-1 truncate text-xs font-medium text-muted-foreground">{label}</p>}
-        <div className="relative h-1.5 w-full cursor-pointer rounded-full bg-secondary"
-          onClick={(e) => {
-            if (!audioRef.current || !duration) return;
+
+      {/* Waveform + seek */}
+      <div style={{ flex:1, minWidth:0 }}>
+        {/* Clickable progress bar */}
+        <div
+          style={{ width:'100%', height:3, background:'var(--line)', borderRadius:99, overflow:'hidden', cursor:'pointer', marginBottom:6 }}
+          onClick={e => {
+            if (!audioRef.current || !dur) return;
             const rect = e.currentTarget.getBoundingClientRect();
-            const ratio = (e.clientX - rect.left) / rect.width;
-            audioRef.current.currentTime = ratio * duration;
-          }}>
-          <div className="h-full rounded-full gradient-amber transition-all" style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }} />
+            audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * dur;
+          }}
+        >
+          <div style={{ height:'100%', width:`${dur ? (progress/dur)*100 : 0}%`, background:'var(--acc)', borderRadius:99, transition:'width .1s' }} />
         </div>
-        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-          <span>{fmt(progress)}</span><span>{fmt(duration)}</span>
+        <WaveformBars playing={playing} />
+        <div style={{ display:'flex', justifyContent:'space-between', fontFamily:'var(--mono)', fontSize:10, color:'var(--mut)', marginTop:4 }}>
+          <span>{fmt(progress)}</span><span>{fmt(dur || 0)}</span>
         </div>
       </div>
-      <a href={src} download={`tts-${Date.now()}.mp3`}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary">
-        <Download className="h-4 w-4" />
+
+      {/* Meta */}
+      <div style={{ width:110, flexShrink:0, overflow:'hidden' }} className="tts-meta">
+        <b style={{ fontSize:13, display:'block', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{name}</b>
+        <span style={{ fontFamily:'var(--mono)', fontSize:10.5, color:'var(--mut)' }}>{voice} · {duration}</span>
+      </div>
+
+      {/* Download */}
+      <a href={url} download={name}
+        style={{ width:32, height:32, borderRadius:8, border:'1px solid var(--line2)', background:'var(--card)', display:'grid', placeItems:'center', color:'var(--mut)', flexShrink:0, transition:'.15s', textDecoration:'none' }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor='var(--ink)'; e.currentTarget.style.color='var(--ink)'; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor='var(--line2)'; e.currentTarget.style.color='var(--mut)'; }}>
+        <svg style={{ width:14,height:14,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+          <path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>
+        </svg>
       </a>
-    </div>
+    </motion.div>
   );
 }
 
-/* ─── Voice Card ─────────────────────────────────────────────────── */
-function VoiceCard({
-  voice, selected, onSelect, playingId, onPlay,
-}: {
-  voice: Voice;
-  selected: boolean;
-  onSelect: () => void;
-  playingId: string | null;
-  onPlay: (id: string | null) => void;
-}) {
-  const [imgError, setImgError] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const isPlaying = playingId === voice._id;
-
-  // لو صوت تاني اتشغّل — وقّف الـ audio الحالي
-  useEffect(() => {
-    if (!isPlaying && audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-  }, [isPlaying]);
-
-  const handlePreview = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!voice.samples?.[0]?.audio) return;
-    if (isPlaying) {
-      audioRef.current?.pause();
-      onPlay(null);
-      return;
-    }
-    onPlay(voice._id);
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.src = voice.samples[0].audio;
-    audio.play().catch(() => onPlay(null));
-    audio.onended = () => onPlay(null);
-  };
-
+/* ── Voice card for selector ─────────────────────────────────────── */
+function VoiceCard({ voice, selected, onSelect }: { voice: Voice; selected: boolean; onSelect: () => void }) {
+  const [imgErr, setImgErr] = useState(false);
   return (
     <button onClick={onSelect}
-      className={cn(
-        'flex flex-col gap-2 rounded-xl border p-3 text-left transition-all hover:border-primary/40',
-        selected ? 'border-primary/50 bg-primary/10' : 'border-border bg-card/40',
-      )}>
-      <audio ref={audioRef} className="hidden" />
-      <div className="flex items-center gap-2">
-        {voice.cover_image && !imgError ? (
-          <img
-            src={voice.cover_image}
-            alt={voice.title}
-            className="h-9 w-9 shrink-0 rounded-lg object-cover"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg gradient-amber">
-            <Mic className="h-4 w-4 text-black" />
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{voice.title}</p>
-          {voice.languages && voice.languages.length > 0 && (
-            <p className="text-[10px] text-muted-foreground">{voice.languages.slice(0, 3).join(' · ')}</p>
-          )}
-        </div>
-        {selected && <div className="h-2 w-2 shrink-0 rounded-full bg-primary" />}
+      style={{
+        border: selected ? '1px solid var(--acc)' : '1px solid var(--line2)',
+        borderRadius:14, padding:12,
+        display:'flex', gap:10, alignItems:'center',
+        background: selected ? 'var(--accsoft)' : 'var(--card)',
+        boxShadow: selected ? '0 0 0 3px rgba(255,77,31,.14)' : 'none',
+        transition:'.15s', textAlign:'left', cursor:'pointer', width:'100%',
+      }}>
+      {/* Avatar */}
+      <div style={{ width:38, height:38, borderRadius:10, background:'var(--dark)', display:'grid', placeItems:'center', flexShrink:0, color:'var(--acc)', overflow:'hidden' }}>
+        {voice.cover_image && !imgErr
+          ? <img src={voice.cover_image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setImgErr(true)} />
+          : <svg style={{ width:18,height:18,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
+        }
       </div>
-      <div className="flex items-center justify-between">
-        {voice.task_count != null && (
-          <p className="text-[10px] text-muted-foreground">{voice.task_count.toLocaleString()} استخدام</p>
-        )}
-        {voice.samples?.[0]?.audio && (
-          <button
-            onClick={handlePreview}
-            className={cn(
-              'flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors',
-              isPlaying
-                ? 'bg-primary/20 text-primary'
-                : 'bg-secondary text-muted-foreground hover:bg-secondary/70 hover:text-foreground',
-            )}
-          >
-            {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-            {isPlaying ? 'إيقاف' : 'معاينة'}
-          </button>
-        )}
+      <div style={{ minWidth:0 }}>
+        <b style={{ fontSize:13.5, display:'block' }}>{voice.title}</b>
+        <span style={{ fontFamily:'var(--mono)', fontSize:10.5, color:'var(--mut)' }}>
+          {voice.languages?.slice(0,2).join(' · ') ?? '—'}
+        </span>
       </div>
+      {selected && (
+        <div style={{ marginLeft:'auto', width:8, height:8, borderRadius:'50%', background:'var(--acc)', flexShrink:0 }} />
+      )}
     </button>
   );
 }
 
-/* ─── Main View ──────────────────────────────────────────────────── */
+/* ── Main ────────────────────────────────────────────────────────── */
+interface GeneratedAudio {
+  id: string; url: string; name: string; voice: string; duration: string;
+}
+
 export function TtsView() {
   const { toast } = useToast();
-  const [tab, setTab] = useState<Tab>('generate');
 
-  // Generate tab state
-  const [text, setText] = useState('');
-  const [format, setFormat] = useState<AudioFormat>('mp3');
-  const [speed, setSpeed] = useState(1);
+  const [text, setText]               = useState('Welcome to Image Engine. One workspace, every medium.');
+  const [format, setFormat]           = useState<Fmt>('mp3');
+  const [speed, setSpeed]             = useState(1);
   const [selectedVoiceId, setSelectedVoiceId] = useState('');
   const [selectedVoiceName, setSelectedVoiceName] = useState('');
-  const [generating, setGenerating] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [generating, setGenerating]   = useState(false);
+  const [audios, setAudios]           = useState<GeneratedAudio[]>([]);
 
-  // Clone tab state
-  const [cloneText, setCloneText] = useState('');
-  const [cloneFile, setCloneFile] = useState<File | null>(null);
-  const [cloneTranscript, setCloneTranscript] = useState('');
-  const [cloning, setCloning] = useState(false);
-  const [cloneAudioUrl, setCloneAudioUrl] = useState<string | null>(null);
-  const cloneInputRef = useRef<HTMLInputElement>(null);
-
-  // Library tab state
-  const [voices, setVoices] = useState<Voice[]>([]);
-  const [voicesTotal, setVoicesTotal] = useState(0);
-  const [voicesPage, setVoicesPage] = useState(1);
+  /* Library */
+  const [voices, setVoices]           = useState<Voice[]>([]);
+  const [voicesPage, setVoicesPage]   = useState(1);
   const [voicesSearch, setVoicesSearch] = useState('');
-  const [voicesLang, setVoicesLang] = useState('');
+  const [voicesLang, setVoicesLang]   = useState('');
   const [voicesHasMore, setVoicesHasMore] = useState(false);
   const [voicesLoading, setVoicesLoading] = useState(false);
-  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
-  const PAGE_SIZE = 20;
+  const [showLibrary, setShowLibrary] = useState(false);
+  const PAGE_SIZE = 12;
 
   const fetchVoices = useCallback(async (page: number, search: string, lang: string) => {
-    setPlayingVoiceId(null); // وقّف أي صوت شغّال عند تغيير الصفحة
     setVoicesLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: String(page), page_size: String(PAGE_SIZE),
-        ...(search ? { title: search } : {}),
-        ...(lang ? { language: lang } : {}),
-      });
-      const r = await fetch(`/api/tts/voices?${params}`);
-      const data = await r.json() as { ok: boolean; voices: Voice[]; total: number; has_more?: boolean; error?: string };
-      if (!data.ok) throw new Error(data.error);
-      setVoices(data.voices);
-      setVoicesTotal(data.total);
-      setVoicesHasMore(data.has_more ?? (data.voices.length === PAGE_SIZE));
-    } catch (err) {
-      toast({ title: 'خطأ', description: String(err), variant: 'destructive' });
-    } finally {
-      setVoicesLoading(false);
-    }
-  }, [toast]);
+      const p = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE), ...(search ? { title: search } : {}), ...(lang ? { language: lang } : {}) });
+      const r = await fetch(`/api/tts/voices?${p}`);
+      const d = await r.json() as { ok: boolean; voices: Voice[]; total: number; has_more?: boolean };
+      if (d.ok) { setVoices(d.voices); setVoicesHasMore(d.has_more ?? d.voices.length === PAGE_SIZE); }
+    } catch { /* silent */ } finally { setVoicesLoading(false); }
+  }, []);
 
   useEffect(() => { fetchVoices(1, '', ''); }, [fetchVoices]);
 
-  /* ── Generate handler ── */
-  const handleGenerate = async (): Promise<void> => {
-    if (!text.trim()) { toast({ title: 'اكتب النص أولاً' }); return; }
+  const handleGenerate = async () => {
+    if (!text.trim()) { toast({ title: 'Write something first' }); return; }
     setGenerating(true);
-    if (audioUrl) { URL.revokeObjectURL(audioUrl); setAudioUrl(null); }
     try {
       const res = await fetch('/api/tts/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: text.trim(),
-          format,
-          speed,
-          ...(selectedVoiceId ? { reference_id: selectedVoiceId } : {}),
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.trim(), format, speed, ...(selectedVoiceId ? { reference_id: selectedVoiceId } : {}) }),
       });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({ error: `HTTP ${res.status}` })) as { error?: string };
-        throw new Error(e.error ?? `HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
-      setAudioUrl(URL.createObjectURL(blob));
-      toast({ title: 'تم توليد الصوت' });
+      const url = URL.createObjectURL(blob);
+      const name = `${text.slice(0, 14).toLowerCase().replace(/\s+/g, '-')}.${format}`;
+      const dur = `0:${Math.max(8, Math.round(text.length / 15)).toString().padStart(2, '0')}`;
+      setAudios(prev => [{ id: Date.now().toString(), url, name, voice: selectedVoiceName || 'Default', duration: dur }, ...prev]);
+      toast({ title: 'Audio ready' });
     } catch (err) {
-      toast({ title: 'فشل التوليد', description: String(err), variant: 'destructive' });
-    } finally {
-      setGenerating(false);
-    }
+      toast({ title: 'Generation failed', description: String(err), variant: 'destructive' });
+    } finally { setGenerating(false); }
   };
 
-  /* ── Clone handler ── */
-  const handleClone = async (): Promise<void> => {
-    if (!cloneText.trim()) { toast({ title: 'اكتب النص أولاً' }); return; }
-    if (!cloneFile) { toast({ title: 'ارفع ملف صوتي أولاً' }); return; }
-    setCloning(true);
-    if (cloneAudioUrl) { URL.revokeObjectURL(cloneAudioUrl); setCloneAudioUrl(null); }
-    try {
-      const b64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1] ?? '');
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(cloneFile);
-      });
-      const res = await fetch('/api/tts/clone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: cloneText.trim(),
-          audio_base64: b64,
-          audio_mime: cloneFile.type || 'audio/wav',
-          transcript: cloneTranscript,
-          format: 'mp3',
-          speed,
-        }),
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({ error: `HTTP ${res.status}` })) as { error?: string };
-        throw new Error(e.error ?? `HTTP ${res.status}`);
-      }
-      const blob = await res.blob();
-      setCloneAudioUrl(URL.createObjectURL(blob));
-      toast({ title: 'تم استنساخ الصوت' });
-    } catch (err) {
-      toast({ title: 'فشل الاستنساخ', description: String(err), variant: 'destructive' });
-    } finally {
-      setCloning(false);
-    }
-  };
-
-  /* ── Render ── */
   return (
-    <PageContainer>
-      <PageHeader title="Text to Speech" description="حوّل النص لصوت طبيعي، استنسخ أي صوت، أو اختر من مكتبة الأصوات" icon={AudioLines} />
+    <div style={{ padding:'clamp(16px,3vw,30px)', paddingBottom:80, maxWidth:1460, margin:'0 auto' }}>
 
-      {/* Tabs */}
-      <div className="mt-5 flex gap-2 rounded-xl border border-border bg-card/40 p-1">
-        {([
-          { id: 'generate', label: 'توليد صوت', icon: Wand2 },
-          { id: 'clone',    label: 'استنساخ صوت', icon: Mic },
-          { id: 'library',  label: 'مكتبة الأصوات', icon: Users },
-        ] as { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[]).map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all',
-              tab === id ? 'gradient-amber text-black shadow-sm' : 'text-muted-foreground hover:text-foreground',
-            )}>
-            <Icon className="h-4 w-4" />{label}
-          </button>
-        ))}
+      {/* Header */}
+      <div className="vhead">
+        <div><h2>Text to Speech</h2><p>Convert text to natural voice, clone any voice, or browse the voice library.</p></div>
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }} className="mt-5">
+      <div className="tts-layout" style={{ display:'grid', gridTemplateColumns:'380px 1fr', gap:18, alignItems:'start' }}>
 
-          {/* ══ GENERATE TAB ══ */}
-          {tab === 'generate' && (
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
-              <div className="space-y-4">
-                {/* Text input */}
-                <div className="rounded-2xl border border-border bg-card/60 p-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">النص</label>
-                    <span className="text-xs text-muted-foreground">{text.length} / 5000</span>
-                  </div>
-                  <textarea value={text} onChange={e => setText(e.target.value.slice(0, 5000))}
-                    placeholder="اكتب النص الذي تريد تحويله لصوت..."
-                    className="min-h-[160px] w-full resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:text-muted-foreground/50" />
-                </div>
+        {/* ── Console panel ── */}
+        <div className="ie-card" style={{ padding:20, display:'flex', flexDirection:'column', gap:18 }}>
 
-                {/* Selected voice badge */}
-                {selectedVoiceId && (
-                  <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
-                    <Mic className="h-4 w-4 text-primary" />
-                    <span className="flex-1 truncate font-medium text-primary">{selectedVoiceName}</span>
-                    <button onClick={() => { setSelectedVoiceId(''); setSelectedVoiceName(''); }}
-                      className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
-                  </div>
-                )}
-                {!selectedVoiceId && (
-                  <p className="text-xs text-muted-foreground">
-                    لم يتم اختيار صوت — سيُستخدم الصوت الافتراضي. اختر صوتاً من{' '}
-                    <button onClick={() => setTab('library')} className="text-primary underline underline-offset-2">مكتبة الأصوات</button>
-                  </p>
-                )}
+          {/* Script */}
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <span className="mic">Script</span>
+            <textarea className="ie-inp" value={text} onChange={e => setText(e.target.value.slice(0,5000))}
+              placeholder="Type or paste the text to speak…" style={{ minHeight:120 }} />
+            <div style={{ display:'flex', justifyContent:'space-between', fontFamily:'var(--mono)', fontSize:10.5, color:'var(--mut)' }}>
+              <span>{text.length} / 5000</span>
+              <span>{Math.ceil(text.split(' ').length / 150)} min read</span>
+            </div>
+          </div>
 
-                {/* Result */}
-                {audioUrl && <AudioPlayer src={audioUrl} label="الصوت المُولَّد" />}
-              </div>
+          {/* Voice selector */}
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <span className="mic">Voice</span>
+              <button onClick={() => setShowLibrary(v => !v)}
+                style={{ background:'none', border:0, cursor:'pointer', fontFamily:'var(--mono)', fontSize:10.5, color:'var(--acc)', letterSpacing:'.08em' }}>
+                {showLibrary ? 'HIDE LIBRARY' : 'BROWSE LIBRARY'}
+              </button>
+            </div>
 
-              {/* Settings panel */}
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-border bg-card/60 p-4 space-y-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">الإعدادات</h3>
-                  {/* Format */}
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-muted-foreground">صيغة الصوت</label>
-                    <div className="flex gap-2">
-                      {FORMATS.map(f => (
-                        <button key={f} onClick={() => setFormat(f)}
-                          className={cn('flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium uppercase transition-all',
-                            format === f ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}>
-                          {f}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Speed */}
-                  <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <label className="text-xs font-medium text-muted-foreground">سرعة الكلام</label>
-                      <span className="text-xs font-semibold text-primary">{speed.toFixed(1)}x</span>
-                    </div>
-                    <input type="range" min="0.5" max="2" step="0.1" value={speed}
-                      onChange={e => setSpeed(parseFloat(e.target.value))}
-                      className="w-full accent-primary" />
-                    <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>0.5x</span><span>2x</span></div>
-                  </div>
-                </div>
-
-                {/* Generate button */}
-                <button onClick={handleGenerate} disabled={!text.trim() || generating}
-                  className={cn('flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all',
-                    !text.trim() || generating ? 'cursor-not-allowed bg-secondary text-muted-foreground' : 'gradient-amber text-black hover:glow-amber')}>
-                  {generating ? <><Loader2 className="h-5 w-5 animate-spin" />جاري التوليد...</> : <><Volume2 className="h-5 w-5" />توليد الصوت</>}
+            {/* Selected voice badge */}
+            {selectedVoiceId ? (
+              <div style={{ display:'flex', alignItems:'center', gap:8, border:'1px solid rgba(255,77,31,.35)', borderRadius:12, padding:'9px 12px', background:'var(--accsoft)' }}>
+                <svg style={{ width:16,height:16,fill:'none',stroke:'var(--acc)',strokeWidth:1.8,flexShrink:0 }} viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
+                <span style={{ flex:1, fontSize:13.5, fontWeight:500, color:'var(--acc2)' }}>{selectedVoiceName}</span>
+                <button onClick={() => { setSelectedVoiceId(''); setSelectedVoiceName(''); }}
+                  style={{ background:'none', border:0, cursor:'pointer', color:'var(--mut)' }}>
+                  <svg style={{ width:14,height:14,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
                 </button>
               </div>
-            </div>
-          )}
+            ) : (
+              <div style={{ border:'1px dashed var(--line2)', borderRadius:12, padding:'9px 12px', fontFamily:'var(--mono)', fontSize:11, color:'var(--mut)', textAlign:'center' }}>
+                No voice selected — default will be used
+              </div>
+            )}
 
-          {/* ══ CLONE TAB ══ */}
-          {tab === 'clone' && (
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
-              <div className="space-y-4">
-                {/* Upload area */}
-                <div onClick={() => cloneInputRef.current?.click()}
-                  className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card/40 transition-all hover:border-primary/40">
-                  <input ref={cloneInputRef} type="file" accept="audio/*" className="hidden"
-                    onChange={e => setCloneFile(e.target.files?.[0] ?? null)} />
-                  {cloneFile ? (
-                    <div className="flex items-center gap-3 p-4">
-                      <AudioLines className="h-8 w-8 text-primary" />
-                      <div>
-                        <p className="text-sm font-medium">{cloneFile.name}</p>
-                        <p className="text-xs text-muted-foreground">{(cloneFile.size / 1024).toFixed(0)} KB</p>
-                      </div>
-                      <button onClick={e => { e.stopPropagation(); setCloneFile(null); }}
-                        className="ml-auto rounded-lg p-1 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            {/* Voice library */}
+            <AnimatePresence>
+              {showLibrary && (
+                <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }}
+                  style={{ overflow:'hidden' }}>
+                  {/* Search row */}
+                  <div style={{ display:'flex', gap:6, marginBottom:10 }}>
+                    <input className="ie-inp" value={voicesSearch} onChange={e => setVoicesSearch(e.target.value)}
+                      placeholder="Search voices…" style={{ flex:1, padding:'8px 10px', fontSize:13 }} />
+                    <select className="ie-inp" value={voicesLang} onChange={e => setVoicesLang(e.target.value)} style={{ width:120, fontSize:12 }}>
+                      {LANGS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                    <button className="ibtn" onClick={() => fetchVoices(1, voicesSearch, voicesLang)} aria-label="Search">
+                      <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                    </button>
+                  </div>
+
+                  {/* Voice grid */}
+                  {voicesLoading ? (
+                    <div style={{ textAlign:'center', padding:'20px 0' }}>
+                      <div style={{ width:24,height:24,borderRadius:'50%',border:'2px solid var(--acc)',borderTopColor:'transparent',animation:'spin 1s linear infinite',margin:'0 auto' }} />
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center gap-2 p-6 text-center">
-                      <Upload className="h-8 w-8 text-muted-foreground/50" />
-                      <p className="text-sm font-medium">ارفع ملف صوتي للاستنساخ</p>
-                      <p className="text-xs text-muted-foreground">WAV, MP3, M4A, OGG — من 10 ثواني لدقيقتين</p>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, maxHeight:280, overflowY:'auto', scrollbarWidth:'thin' }}>
+                      {voices.map(v => (
+                        <VoiceCard key={v._id} voice={v} selected={selectedVoiceId === v._id}
+                          onSelect={() => { setSelectedVoiceId(v._id); setSelectedVoiceName(v.title); setShowLibrary(false); }} />
+                      ))}
                     </div>
                   )}
-                </div>
 
-                {/* Transcript */}
-                <div className="rounded-xl border border-border bg-card/40 p-3">
-                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">نص الصوت المرفوع (اختياري — يحسّن الجودة)</label>
-                  <textarea value={cloneTranscript} onChange={e => setCloneTranscript(e.target.value)}
-                    placeholder="اكتب ما يقوله الصوت المرفوع..."
-                    className="min-h-[60px] w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground/50" />
-                </div>
-
-                {/* Text to speak */}
-                <div className="rounded-2xl border border-border bg-card/60 p-4">
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">النص المراد نطقه</label>
-                  <textarea value={cloneText} onChange={e => setCloneText(e.target.value.slice(0, 5000))}
-                    placeholder="اكتب النص الذي تريد نطقه بالصوت المستنسخ..."
-                    className="min-h-[120px] w-full resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:text-muted-foreground/50" />
-                </div>
-
-                {cloneAudioUrl && <AudioPlayer src={cloneAudioUrl} label="الصوت المستنسخ" />}
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-border bg-card/60 p-4 space-y-3">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">ملاحظات</h3>
-                  {[
-                    'ارفع صوتاً نظيفاً بدون ضوضاء خلفية',
-                    'أفضل نتيجة مع 10 ثواني أو أكثر',
-                    'صوت شخص واحد فقط بدون موسيقى',
-                    'الاستنساخ فوري — لا يحتاج تدريب',
-                  ].map((tip, i) => (
-                    <div key={i} className="flex gap-2 text-xs text-muted-foreground">
-                      <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />{tip}
+                  {/* Pagination */}
+                  {(voicesHasMore || voicesPage > 1) && (
+                    <div style={{ display:'flex', justifyContent:'space-between', marginTop:8 }}>
+                      <button className="btn ghost sm" disabled={voicesPage === 1} onClick={() => { const p=voicesPage-1; setVoicesPage(p); fetchVoices(p, voicesSearch, voicesLang); }}>← Prev</button>
+                      <button className="btn ghost sm" disabled={!voicesHasMore} onClick={() => { const p=voicesPage+1; setVoicesPage(p); fetchVoices(p, voicesSearch, voicesLang); }}>Next →</button>
                     </div>
-                  ))}
-                </div>
-                <button onClick={handleClone} disabled={!cloneText.trim() || !cloneFile || cloning}
-                  className={cn('flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all',
-                    !cloneText.trim() || !cloneFile || cloning ? 'cursor-not-allowed bg-secondary text-muted-foreground' : 'gradient-amber text-black hover:glow-amber')}>
-                  {cloning ? <><Loader2 className="h-5 w-5 animate-spin" />جاري الاستنساخ...</> : <><Mic className="h-5 w-5" />استنسخ الصوت</>}
-                </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Format + Speed */}
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <div>
+              <span className="mic" style={{ display:'block', marginBottom:8 }}>Format</span>
+              <div style={{ display:'flex', gap:8 }}>
+                {FORMATS.map(f => (
+                  <button key={f} className={`chip${format===f?' on':''}`} onClick={() => setFormat(f)}
+                    style={{ flex:1, textAlign:'center', textTransform:'uppercase' }}>
+                    {f}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
 
-          {/* ══ LIBRARY TAB ══ */}
-          {tab === 'library' && (
-            <div className="space-y-4">
-              {/* Filters */}
-              <div className="flex flex-wrap gap-3">
-                <div className="relative flex-1 min-w-[180px]">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input value={voicesSearch} onChange={e => setVoicesSearch(e.target.value)}
-                    placeholder="ابحث عن صوت..."
-                    className="h-9 w-full rounded-xl border border-border bg-card/50 pl-9 pr-3 text-sm outline-none focus:border-primary/40" />
-                </div>
-                <select value={voicesLang} onChange={e => setVoicesLang(e.target.value)}
-                  className="h-9 rounded-xl border border-border bg-card/50 px-3 text-sm outline-none focus:border-primary/40">
-                  {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                </select>
-                <button onClick={() => { setVoicesPage(1); fetchVoices(1, voicesSearch, voicesLang); }}
-                  className="flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card/50 px-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
-                  <Search className="h-4 w-4" />بحث
-                </button>
-                <button onClick={() => { setVoicesSearch(''); setVoicesLang(''); setVoicesPage(1); fetchVoices(1, '', ''); }}
-                  className="flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card/50 px-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
-                  <RefreshCw className="h-4 w-4" />
-                </button>
+            <div>
+              <div style={{ display:'flex', justifyContent:'space-between' }}>
+                <span className="mic">Speed</span>
+                <span className="mic" style={{ color:'var(--acc)' }}>{speed.toFixed(1)}x</span>
               </div>
+              <input type="range" min=".5" max="2" step=".1" value={speed}
+                onChange={e => setSpeed(parseFloat(e.target.value))}
+                style={{ width:'100%', accentColor:'var(--acc)', marginTop:4 }} />
+              <div style={{ display:'flex', justifyContent:'space-between', fontFamily:'var(--mono)', fontSize:10, color:'var(--mut)', marginTop:2 }}>
+                <span>0.5x</span><span>2x</span>
+              </div>
+            </div>
+          </div>
 
-              {/* Selected voice info */}
-              {selectedVoiceId && (
-                <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
-                  <Mic className="h-4 w-4 shrink-0 text-primary" />
-                  <span className="flex-1 text-primary font-medium">محدد: {selectedVoiceName}</span>
-                  <button onClick={() => setTab('generate')} className="text-xs text-primary underline underline-offset-2">استخدم هذا الصوت</button>
-                </div>
-              )}
+          {/* Generate button */}
+          <button className="btn acc" onClick={handleGenerate} disabled={!text.trim() || generating}
+            style={{ width:'100%', padding:14, fontSize:15, fontWeight:700 }}>
+            {generating
+              ? <><div style={{ width:18,height:18,borderRadius:'50%',border:'2px solid rgba(255,255,255,.3)',borderTopColor:'#fff',animation:'spin 1s linear infinite' }} />Synthesizing…</>
+              : <><svg style={{ width:18,height:18,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>Synthesize voice</>
+            }
+          </button>
+        </div>
 
-              {/* Grid */}
-              {voicesLoading ? (
-                <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-              ) : voices.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-16 text-muted-foreground">
-                  <Globe className="h-10 w-10 opacity-30" />
-                  <p className="text-sm">لا توجد أصوات — تأكد من وجود API Key في لوحة الأدمن</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {voices.map(v => (
-                    <VoiceCard key={v._id} voice={v} selected={selectedVoiceId === v._id}
-                      playingId={playingVoiceId}
-                      onPlay={setPlayingVoiceId}
-                      onSelect={() => { setSelectedVoiceId(v._id); setSelectedVoiceName(v.title); }} />
-                  ))}
-                </div>
-              )}
+        {/* ── Generated audio list ── */}
+        <div>
+          <h3 className="mic" style={{ marginBottom:12 }}>Generated audio</h3>
 
-              {/* Pagination */}
-              {(voicesTotal > PAGE_SIZE || voicesHasMore) && (
-                <div className="flex items-center justify-between border-t border-border pt-4">
-                  <p className="text-xs text-muted-foreground">
-                    صفحة {voicesPage}
-                    {voicesTotal > 0 && ` — ${voicesTotal} صوت`}
-                  </p>
-                  <div className="flex gap-2">
-                    <button disabled={voicesPage === 1} onClick={() => { const p = voicesPage - 1; setVoicesPage(p); fetchVoices(p, voicesSearch, voicesLang); }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary/40 disabled:opacity-40">
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                    <button disabled={!voicesHasMore && voices.length < PAGE_SIZE} onClick={() => { const p = voicesPage + 1; setVoicesPage(p); fetchVoices(p, voicesSearch, voicesLang); }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary/40 disabled:opacity-40">
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
+          {audios.length === 0 ? (
+            <div style={{ border:'1px dashed var(--line2)', borderRadius:16, padding:'56px 30px', textAlign:'center', color:'var(--mut)' }}>
+              <svg style={{ width:32,height:32,fill:'none',stroke:'currentColor',strokeWidth:1.8,margin:'0 auto 12px',display:'block',opacity:.3 }} viewBox="0 0 24 24">
+                <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/>
+              </svg>
+              <p style={{ fontSize:14 }}>No audio yet — synthesize something!</p>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {audios.map(a => (
+                <AudioCard key={a.id} url={a.url} name={a.name} voice={a.voice} duration={a.duration}
+                  onDelete={() => setAudios(p => p.filter(x => x.id !== a.id))} />
+              ))}
             </div>
           )}
+        </div>
+      </div>
 
-        </motion.div>
-      </AnimatePresence>
-    </PageContainer>
+      <style>{`
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes wv{from{height:18%}to{height:92%}}
+        @media(max-width:1020px){.tts-layout{grid-template-columns:1fr!important}}
+        @media(max-width:480px){.tts-meta{display:none!important}}
+      `}</style>
+    </div>
   );
 }

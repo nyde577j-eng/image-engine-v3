@@ -172,12 +172,16 @@ async function supabaseFetch(path: string, options: RequestInit = {}) {
 }
 
 /**
- * GET /api/chat/sessions — جلب كل الجلسات مرتبة من الأحدث
+ * GET /api/chat/sessions — جلب الجلسات مع فلترة بـ user_key للخصوصية
  */
-router.get("/chat/sessions", async (_req, res) => {
+router.get("/chat/sessions", async (req, res) => {
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.json({ ok: true, sessions: [] });
   try {
-    const r = await supabaseFetch("/chat_sessions?select=id,title,created_at,updated_at&order=updated_at.desc");
+    const userKey = (req.query['user_key'] as string | undefined)?.trim();
+    const filter = userKey
+      ? `/chat_sessions?select=id,title,created_at,updated_at&user_key=eq.${encodeURIComponent(userKey)}&order=updated_at.desc`
+      : `/chat_sessions?select=id,title,created_at,updated_at&order=updated_at.desc`;
+    const r = await supabaseFetch(filter);
     if (!r.ok) throw new Error(`Supabase error ${r.status}`);
     const data = await r.json();
     return res.json({ ok: true, sessions: data });
@@ -187,16 +191,19 @@ router.get("/chat/sessions", async (_req, res) => {
 });
 
 /**
- * POST /api/chat/sessions — إنشاء جلسة جديدة
- * body: { title: string }
+ * POST /api/chat/sessions — إنشاء جلسة جديدة مع حفظ user_key
+ * body: { title: string, user_key?: string }
  */
 router.post("/chat/sessions", async (req, res) => {
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ ok: false, error: "Supabase not configured" });
-  const { title } = req.body as { title?: string };
+  const { title, user_key } = req.body as { title?: string; user_key?: string };
   try {
     const r = await supabaseFetch("/chat_sessions", {
       method: "POST",
-      body: JSON.stringify({ title: title?.trim() || "محادثة جديدة" }),
+      body: JSON.stringify({
+        title: title?.trim() || "New chat",
+        ...(user_key ? { user_key } : {}),
+      }),
     });
     if (!r.ok) throw new Error(`Supabase error ${r.status}`);
     const data = await r.json();

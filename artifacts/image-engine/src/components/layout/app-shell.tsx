@@ -1,20 +1,57 @@
-import { AppProvider } from '@/components/providers/app-provider';
+import { useEffect } from 'react';
+import { AppProvider, useApp } from '@/components/providers/app-provider';
 import { AdminAuthProvider } from '@/components/providers/admin-auth-provider';
 import { Rail } from './rail';
 import { TopBar } from './topbar';
 import { ViewRouter } from '@/components/views/view-router';
 import { CommandPalette } from '@/components/ui/command-palette';
 import { MobileBottomBar } from './mobile-bottom-bar';
+import { AnnouncementBar } from './announcement-bar';
 
 function ShellContent() {
+  const { locale, theme } = useApp();
+
+  /* ── Apply RTL + lang + dark class on every locale/theme change ── */
+  useEffect(() => {
+    const html = document.documentElement;
+    html.setAttribute('lang', locale);
+    html.setAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
+    if (theme === 'dark') {
+      html.classList.add('dark');
+    } else {
+      html.classList.remove('dark');
+    }
+  }, [locale, theme]);
+
   return (
     <>
-      {/* ── Global layout styles ── */}
       <style>{`
-        /* Reset any overflow that breaks mobile */
         html, body, #root { overflow-x: hidden; }
 
-        /* App shell: rail + main */
+        /* ── Dark mode CSS variables ── */
+        html.dark {
+          --bg:     #141310;
+          --panel:  #1c1a16;
+          --card:   #1e1c18;
+          --ink:    #f4f2ea;
+          --mut:    #938f83;
+          --line:   #2e2b24;
+          --line2:  #3a3730;
+          --accsoft: rgba(255,77,31,.18);
+        }
+        html.dark body { background: var(--bg); color: var(--ink); }
+
+        /* ── RTL layout fixes ── */
+        html[dir="rtl"] .topbar-title { text-align: right; }
+        html[dir="rtl"] .rail-sidebar { right: 0; left: auto; }
+        html[dir="rtl"] .app-shell    { direction: rtl; }
+        html[dir="rtl"] .rbtn::after  {
+          left: auto;
+          right: calc(100% + 12px);
+          translate: 0 -50%;
+        }
+
+        /* ── Shell grid ── */
         .app-shell {
           display: grid;
           grid-template-columns: 68px 1fr;
@@ -23,24 +60,17 @@ function ShellContent() {
           position: relative;
           z-index: 1;
         }
-
-        /* On mobile: single column, rail hidden */
         @media (max-width: 899px) {
-          .app-shell {
-            grid-template-columns: 1fr;
-          }
-          /* extra bottom padding so content clears the bottom nav */
-          .app-main-content {
-            padding-bottom: env(safe-area-inset-bottom);
-          }
+          .app-shell { grid-template-columns: 1fr; }
+          .app-main-content { padding-bottom: env(safe-area-inset-bottom); }
         }
       `}</style>
 
-      <div className="app-shell">
-        {/* Rail — hidden on mobile via its own CSS */}
-        <Rail />
+      {/* ── Announcement banner (top of everything) ── */}
+      <AnnouncementBar />
 
-        {/* Main column */}
+      <div className="app-shell">
+        <Rail />
         <div
           className="app-main-content"
           style={{ minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
@@ -52,10 +82,7 @@ function ShellContent() {
         </div>
       </div>
 
-      {/* Mobile bottom bar — renders outside grid so it's always on top */}
       <MobileBottomBar />
-
-      {/* Command Palette — portal-like, always on top */}
       <CommandPalette />
     </>
   );
