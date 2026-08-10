@@ -2,6 +2,14 @@ import { useApp } from '@/components/providers/app-provider';
 import { useAdminAuth } from '@/components/providers/admin-auth-provider';
 import type { ViewId } from '@/lib/types';
 
+/* ── icon style — MUST be declared before NAV array ─────────────── */
+const IC: React.CSSProperties = {
+  width: 20, height: 20,
+  fill: 'none', stroke: 'currentColor',
+  strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round',
+  flexShrink: 0,
+};
+
 interface NavItem {
   id: ViewId;
   tip: string;
@@ -28,22 +36,23 @@ const NAV: (NavItem | 'div')[] = [
   'div',
   { id: 'api',         tip: 'API',         icon: <svg style={IC} viewBox="0 0 24 24"><path d="M8 8l-5 4 5 4M16 8l5 4-5 4"/></svg> },
   { id: 'settings',    tip: 'SETTINGS',    icon: <svg style={IC} viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg> },
-  { id: 'admin',       tip: 'ADMIN', adm: true, icon: <svg style={IC} viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg> },
+  { id: 'admin', tip: 'ADMIN', adm: true,  icon: <svg style={IC} viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg> },
 ];
 
-/* icon style constant — defined before use */
-const IC: React.CSSProperties = {
-  width: 20, height: 20,
-  fill: 'none', stroke: 'currentColor',
-  strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round',
-  flexShrink: 0,
-} as const;
-
 const LogoMark = ({ onClick }: { onClick: () => void }) => (
-  <button onClick={onClick}
-    style={{ width:40, height:40, borderRadius:12, background:'#ff4d1f', color:'#fff', display:'grid', placeItems:'center', marginBottom:8, flexShrink:0, border:'none', cursor:'pointer', boxShadow:'0 6px 18px rgba(255,77,31,.4)' }}
-    title="Studio Home">
-    <svg style={{ width:22,height:22,fill:'currentColor' }} viewBox="0 0 24 24">
+  <button
+    onClick={onClick}
+    style={{
+      width: 40, height: 40, borderRadius: 12,
+      background: '#ff4d1f', color: '#fff',
+      display: 'grid', placeItems: 'center',
+      marginBottom: 8, flexShrink: 0,
+      border: 'none', cursor: 'pointer',
+      boxShadow: '0 6px 18px rgba(255,77,31,.4)',
+    }}
+    title="Studio Home"
+  >
+    <svg style={{ width: 22, height: 22, fill: 'currentColor' }} viewBox="0 0 24 24">
       <path d="M13 2 4 14h6l-1 8 9-12h-6z"/>
     </svg>
   </button>
@@ -66,37 +75,36 @@ export function Rail() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        /* ↓ scrollable so no item is hidden */
         overflowY: 'auto',
         overflowX: 'hidden',
-        padding: '14px 0 14px',
+        padding: '14px 0',
         gap: 4,
         zIndex: 40,
-        scrollbarWidth: 'none',   /* Firefox */
+        scrollbarWidth: 'none',
       }}
     >
       <LogoMark onClick={() => setActiveView('home')} />
 
       {NAV.map((item, i) => {
         if (item === 'div') {
-          return <div key={`div-${i}`} style={{ width:26, height:1, background:'#2e2b24', margin:'6px 0', flexShrink:0 }} />;
+          return (
+            <div
+              key={`div-${i}`}
+              style={{ width: 26, height: 1, background: '#2e2b24', margin: '6px 0', flexShrink: 0 }}
+            />
+          );
         }
 
-        const navItem = item as NavItem;
-        const active  = activeView === navItem.id;
-        const isAdm   = navItem.adm;
-        const color   = active && isAdm
-          ? '#d33a2c'
-          : active
-          ? '#ff4d1f'
-          : '#938f83';
+        const nav   = item as NavItem;
+        const active = activeView === nav.id;
+        const color  = active && nav.adm ? '#d33a2c' : active ? '#ff4d1f' : '#938f83';
 
         return (
           <button
-            key={navItem.id}
-            data-tip={navItem.tip}
-            onClick={() => setActiveView(navItem.id)}
-            aria-label={navItem.tip}
+            key={nav.id}
+            data-tip={nav.tip}
+            onClick={() => setActiveView(nav.id)}
+            aria-label={nav.tip}
             className="rbtn"
             style={{
               color,
@@ -105,16 +113,13 @@ export function Rail() {
               flexShrink: 0,
             }}
           >
-            {navItem.icon}
+            {nav.icon}
           </button>
         );
       })}
 
       <style>{`
-        /* Hide scrollbar track on WebKit */
         .rail-sidebar::-webkit-scrollbar { display: none; }
-
-        /* Hide on mobile — MobileBottomBar handles navigation */
         @media (max-width: 899px) {
           .rail-sidebar { display: none !important; }
         }
