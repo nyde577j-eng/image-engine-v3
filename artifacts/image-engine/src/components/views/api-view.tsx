@@ -67,11 +67,11 @@ const API_KEYS = [
 ] as const;
 
 /* ─── Usage bars ─────────────────────────────────────────────────── */
-const USAGE = [
+const USAGE: { label: string; val: string; pct: number; hot?: boolean }[] = [
   { label:'REQUESTS',       val:'8,412 / 20,000', pct:42 },
   { label:'COMPUTE MINUTES',val:'311 / 500',       pct:62 },
   { label:'STORAGE',        val:'31 / 50 GB',      pct:62, hot:true },
-] as const;
+];
 
 export function ApiView() {
   const [tab, setTab] = useState<Tab>('generate');
