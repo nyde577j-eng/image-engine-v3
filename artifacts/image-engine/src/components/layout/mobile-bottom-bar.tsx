@@ -124,7 +124,7 @@ export function MobileBottomBar() {
               position: 'fixed', inset: 0,
               background: 'rgba(20,19,16,.5)',
               backdropFilter: 'blur(4px)',
-              zIndex: 90,
+              zIndex: 199,
             }}
           />
           {/* Sheet */}
@@ -133,7 +133,7 @@ export function MobileBottomBar() {
             aria-label="All modules"
             style={{
               position: 'fixed', left: 0, right: 0, bottom: 0,
-              zIndex: 100, background: 'var(--card)',
+              zIndex: 200, background: 'var(--card)',
               borderRadius: '24px 24px 0 0',
               borderTop: '1px solid var(--line)',
               padding: '14px 18px 26px',

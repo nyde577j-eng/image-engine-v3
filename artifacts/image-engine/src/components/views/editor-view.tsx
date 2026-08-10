@@ -340,12 +340,12 @@ export function EditorView() {
           <>
             <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
               onClick={() => setPanelOpen(false)}
-              style={{ position:'fixed',inset:0,zIndex:80,background:'rgba(20,19,16,.45)',backdropFilter:'blur(3px)' }} />
+              style={{ position:'fixed',inset:0,zIndex:199,background:'rgba(20,19,16,.45)',backdropFilter:'blur(3px)' }} />
             <motion.div
               initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }}
               transition={{ type:'spring', stiffness:320, damping:30 }}
               style={{
-                position:'fixed', left:0, right:0, bottom:0, zIndex:90,
+                position:'fixed', left:0, right:0, bottom:0, zIndex:200,
                 background:'var(--card)', borderRadius:'20px 20px 0 0',
                 borderTop:'1px solid var(--line)',
                 padding:'14px 18px 32px', maxHeight:'78vh', overflowY:'auto',
@@ -396,7 +396,7 @@ export function EditorView() {
         {lbOpen && displayImg && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
             onClick={() => setLbOpen(false)}
-            style={{ position:'fixed',inset:0,zIndex:110,background:'rgba(20,19,16,.92)',backdropFilter:'blur(4px)',display:'grid',placeItems:'center',padding:18 }}>
+            style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(20,19,16,.92)',backdropFilter:'blur(4px)',display:'grid',placeItems:'center',padding:18 }}>
             <button className="ibtn d" onClick={()=>setLbOpen(false)}
               style={{ position:'absolute',top:14,right:14 }}>
               <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>

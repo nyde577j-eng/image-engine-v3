@@ -78,7 +78,7 @@ export function CommandPalette() {
               position: 'fixed', inset: 0,
               background: 'rgba(20,19,16,.5)',
               backdropFilter: 'blur(4px)',
-              zIndex: 110,
+              zIndex: 390,
             }}
           />
 
@@ -92,7 +92,7 @@ export function CommandPalette() {
               left: '50%',
               translate: '-50% 0',
               width: 'min(620px, calc(100vw - 32px))',
-              zIndex: 120,
+              zIndex: 400,
               background: 'var(--card)',
               border: '1px solid var(--line2)',
               borderRadius: 20,

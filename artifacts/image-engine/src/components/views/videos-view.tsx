@@ -45,9 +45,24 @@ const QC: Record<string, { bg: string; color: string }> = {
 function DownloadModal({ video, onClose }: { video: PageVideo; onClose: () => void }) {
   return (
     <>
-      <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:110,background:'rgba(20,19,16,.6)',backdropFilter:'blur(4px)' }} />
+      <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(20,19,16,.6)',backdropFilter:'blur(4px)' }} />
       <motion.div initial={{ opacity:0, y:30 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:30 }}
-        style={{ position:'fixed',bottom:0,left:'50%',translate:'-50% 0',zIndex:120,width:'min(480px,100vw)',background:'var(--card)',borderRadius:'22px 22px 0 0',border:'1px solid var(--line)',boxShadow:'0 -20px 60px rgba(0,0,0,.15)',overflow:'hidden' }}>
+        style={{
+          position:'fixed',
+          bottom:0, left:'50%', translate:'-50% 0',
+          zIndex:201,
+          width:'min(480px,100vw)',
+          background:'var(--card)',
+          borderRadius:'22px 22px 0 0',
+          border:'1px solid var(--line)',
+          boxShadow:'0 -20px 60px rgba(0,0,0,.25)',
+          overflow:'hidden',
+          /* Safe area for phones with home bar */
+          paddingBottom:'env(safe-area-inset-bottom)',
+          /* Make it scroll if content too tall */
+          maxHeight:'85vh',
+          overflowY:'auto',
+        }}>
 
         {/* Grab */}
         <div style={{ width:44,height:5,borderRadius:99,background:'var(--line2)',margin:'12px auto 0' }} />

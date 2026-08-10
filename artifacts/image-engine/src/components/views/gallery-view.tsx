@@ -157,7 +157,7 @@ export function GalleryView() {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setSelected(null)}
-            style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(20,19,16,.85)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 18 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(20,19,16,.85)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 18 }}
           >
             <motion.div
               initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}

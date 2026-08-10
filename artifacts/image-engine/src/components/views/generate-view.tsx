@@ -392,7 +392,7 @@ export function GenerateView() {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setLbOpen(false)}
-            style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(20,19,16,.9)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 18 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(20,19,16,.9)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 18 }}
           >
             <button
               onClick={() => setLbOpen(false)}
