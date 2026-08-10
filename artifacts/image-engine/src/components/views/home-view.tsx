@@ -2,6 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/components/providers/app-provider';
 import { SAMPLE_IMAGES } from '@/lib/mock-data';
 
+/* ── Icon style — defined BEFORE TILES ─────────────────────────── */
+const ICON_S: React.CSSProperties = {
+  width: 22, height: 22,
+  fill: 'none', stroke: 'var(--acc)',
+  strokeWidth: 1.8,
+};
+
 /* ── Tile definitions ────────────────────────────────────────────── */
 const TILES = [
   {
@@ -36,20 +43,12 @@ const TILES = [
   },
 ];
 
-const ICON_S: React.CSSProperties = {
-  width: 22, height: 22,
-  fill: 'none', stroke: 'var(--acc)',
-  strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round',
-};
-
-/* ── Home View ────────────────────────────────────────────────────── */
 export function HomeView() {
   const { setActiveView, setPrompt, credits, isAdmin } = useApp();
   const [promptVal, setPromptVal] = useState('');
   const [stats, setStats] = useState({ visits: 0, edits: 0, videos: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch stats from API
   useEffect(() => {
     fetch('/api/stats')
       .then(r => r.json())
@@ -61,23 +60,16 @@ export function HomeView() {
 
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (promptVal.trim()) {
-      setPrompt(promptVal.trim());
-    }
+    if (promptVal.trim()) setPrompt(promptVal.trim());
     setActiveView('generate');
   };
 
   return (
     <div style={{ padding: 'clamp(16px,3vw,30px)', paddingBottom: 110, maxWidth: 1460, margin: '0 auto' }}>
 
-      {/* ── Hero ── */}
+      {/* Hero */}
       <div style={{ paddingTop: 'clamp(10px,3vw,34px)', paddingBottom: 22, maxWidth: 760 }}>
-        <h1 style={{
-          fontSize: 'clamp(32px,5.4vw,58px)',
-          fontWeight: 700,
-          letterSpacing: '-.035em',
-          lineHeight: 1.04,
-        }}>
+        <h1 style={{ fontSize: 'clamp(32px,5.4vw,58px)', fontWeight: 700, letterSpacing: '-.035em', lineHeight: 1.04 }}>
           Make something{' '}
           <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>unreal</em>.
         </h1>
@@ -86,21 +78,14 @@ export function HomeView() {
         </p>
       </div>
 
-      {/* ── Command bar ── */}
-      <form
-        onSubmit={handleGenerate}
-        style={{
-          display: 'flex', gap: 10, alignItems: 'center',
-          background: 'var(--dark)',
-          border: '1px solid var(--dline)',
-          borderRadius: 18,
-          padding: '10px 10px 10px 20px',
-          maxWidth: 760,
-          boxShadow: '0 20px 50px rgba(20,19,16,.18)',
-          transition: '.2s',
-        }}
-      >
-        <svg style={{ width:20,height:20,flex:'none',stroke:'var(--acc)',fill:'none',strokeWidth:1.8 }} viewBox="0 0 24 24">
+      {/* Command bar */}
+      <form onSubmit={handleGenerate} style={{
+        display: 'flex', gap: 10, alignItems: 'center',
+        background: 'var(--dark)', border: '1px solid var(--dline)',
+        borderRadius: 18, padding: '10px 10px 10px 20px',
+        maxWidth: 760, boxShadow: '0 20px 50px rgba(20,19,16,.18)',
+      }}>
+        <svg style={{ width:20,height:20,flexShrink:0,stroke:'var(--acc)',fill:'none',strokeWidth:1.8 }} viewBox="0 0 24 24">
           <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>
           <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>
         </svg>
@@ -110,138 +95,71 @@ export function HomeView() {
           onChange={e => setPromptVal(e.target.value)}
           placeholder="A crystal city above the clouds at golden hour…"
           aria-label="Describe what you want to create"
-          style={{
-            flex: 1, background: 'none', border: 0,
-            color: 'var(--dtext)', fontFamily: 'var(--ui)', fontSize: 15,
-            minWidth: 0, outline: 'none',
-          }}
+          style={{ flex:1, background:'none', border:0, color:'var(--dtext)', fontFamily:'var(--ui)', fontSize:15, minWidth:0, outline:'none' }}
         />
-        <button
-          type="submit"
-          className="btn acc"
-        >
-          Generate
-        </button>
+        <button type="submit" className="btn acc">Generate</button>
       </form>
 
-      {/* ── Quick launch tiles ── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(6,1fr)',
-        gap: 12,
-        margin: '26px 0 30px',
-        maxWidth: 980,
-      }}
-        className="launch-grid"
-      >
+      {/* Launch tiles */}
+      <div className="launch-grid" style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:12, margin:'26px 0 30px', maxWidth:980 }}>
         {TILES.map(tile => (
-          <button
-            key={tile.id}
-            onClick={() => setActiveView(tile.id)}
-            className="launch-tile"
+          <button key={tile.id} onClick={() => setActiveView(tile.id)}
             style={{
-              position: 'relative',
-              display: 'flex', flexDirection: 'column',
-              gap: 22, alignItems: 'flex-start',
-              background: 'var(--card)',
-              border: '1px solid var(--line)',
-              borderRadius: 'var(--r2)',
-              padding: 16,
-              minHeight: 118,
-              transition: '.2s',
-              overflow: 'hidden',
-              textAlign: 'left',
-              cursor: 'pointer',
+              position:'relative', display:'flex', flexDirection:'column',
+              gap:22, alignItems:'flex-start',
+              background:'var(--card)', border:'1px solid var(--line)',
+              borderRadius:'var(--r2)', padding:16, minHeight:118,
+              transition:'.2s', overflow:'hidden', textAlign:'left', cursor:'pointer',
             }}
-            onMouseEnter={e => {
-              const el = e.currentTarget;
-              el.style.transform = 'translateY(-3px)';
-              el.style.borderColor = 'var(--ink)';
-              el.style.boxShadow = 'var(--sh)';
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget;
-              el.style.transform = '';
-              el.style.borderColor = 'var(--line)';
-              el.style.boxShadow = 'none';
-            }}
+            onMouseEnter={e => { const el=e.currentTarget; el.style.transform='translateY(-3px)'; el.style.borderColor='var(--ink)'; el.style.boxShadow='var(--sh)'; }}
+            onMouseLeave={e => { const el=e.currentTarget; el.style.transform=''; el.style.borderColor='var(--line)'; el.style.boxShadow='none'; }}
           >
             {tile.icon}
-            <b style={{ fontSize: 14, fontWeight: 500 }}>{tile.label}</b>
-            <span className="mic" style={{ position: 'absolute', top: 16, right: 16, opacity: 0, transition: '.2s' }}>
-              {tile.num}
-            </span>
+            <b style={{ fontSize:14, fontWeight:500 }}>{tile.label}</b>
+            <span className="mic" style={{ position:'absolute', top:16, right:16 }}>{tile.num}</span>
           </button>
         ))}
       </div>
 
-      {/* ── Status strip ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 14,
-        flexWrap: 'wrap',
-        fontFamily: 'var(--mono)', fontSize: 11.5,
-        color: 'var(--mut)', marginBottom: 26,
-      }}>
-        <span style={{
-          width: 7, height: 7, borderRadius: '50%',
-          background: 'var(--ok)',
-          animation: 'pulse-dot 2s infinite',
-          display: 'inline-block',
-        }} />
-        <span>QUEUE 00</span>
-        <span>·</span>
-        <span>CREDITS {isAdmin ? '∞' : credits.toLocaleString()}</span>
-        <span>·</span>
-        <span>VISITS {stats.visits.toLocaleString()}</span>
-        <span>·</span>
-        <span>EDITS {stats.edits.toLocaleString()}</span>
-        <span>·</span>
-        <span>VIDEOS {stats.videos.toLocaleString()}</span>
-        <span>·</span>
+      {/* Status strip */}
+      <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap', fontFamily:'var(--mono)', fontSize:11.5, color:'var(--mut)', marginBottom:26 }}>
+        <span style={{ width:7,height:7,borderRadius:'50%',background:'var(--ok)',animation:'pulse-dot 2s infinite',display:'inline-block' }} />
+        <span>QUEUE 00</span><span>·</span>
+        <span>CREDITS {isAdmin ? '∞' : credits.toLocaleString()}</span><span>·</span>
+        <span>VISITS {stats.visits.toLocaleString()}</span><span>·</span>
+        <span>EDITS {stats.edits.toLocaleString()}</span><span>·</span>
+        <span>VIDEOS {stats.videos.toLocaleString()}</span><span>·</span>
         <span>ALL SYSTEMS NOMINAL</span>
       </div>
 
-      {/* ── Resume row ── */}
+      {/* Resume row */}
       <div>
-        <h3 className="mic" style={{ marginBottom: 12 }}>Pick up where you left off</h3>
-        <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 10, scrollbarWidth: 'thin' }}>
-          {SAMPLE_IMAGES.slice(0, 7).map((img) => (
-            <button
-              key={img.id}
-              onClick={() => setActiveView('gallery')}
-              style={{
-                flex: '0 0 200px', borderRadius: 14, overflow: 'hidden',
-                background: 'var(--card)', border: '1px solid var(--line)',
-                transition: '.2s', textAlign: 'left', padding: 0, cursor: 'pointer',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = 'var(--sh)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'none'; }}
+        <h3 className="mic" style={{ marginBottom:12 }}>Pick up where you left off</h3>
+        <div style={{ display:'flex', gap:14, overflowX:'auto', paddingBottom:10, scrollbarWidth:'thin' }}>
+          {SAMPLE_IMAGES.slice(0,7).map(img => (
+            <button key={img.id} onClick={() => setActiveView('gallery')}
+              style={{ flex:'0 0 200px', borderRadius:14, overflow:'hidden', background:'var(--card)', border:'1px solid var(--line)', transition:'.2s', textAlign:'left', padding:0, cursor:'pointer' }}
+              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow='var(--sh)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='none'; }}
             >
-              <img
-                src={img.url}
-                alt={img.prompt.slice(0, 40)}
-                loading="lazy"
-                style={{ height: 120, width: '100%', objectFit: 'cover', display: 'block' }}
-                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+              <img src={img.url} alt={img.prompt.slice(0,40)} loading="lazy"
+                style={{ height:120, width:'100%', objectFit:'cover', display:'block' }}
+                onError={e => { (e.currentTarget as HTMLImageElement).style.display='none'; }}
               />
-              <div style={{ padding: '10px 12px' }}>
-                <b style={{ display: 'block', fontSize: 13, fontWeight: 500 }}>
-                  {img.prompt.slice(0, 28)}…
-                </b>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--mut)' }}>
-                  {img.model}
-                </span>
+              <div style={{ padding:'10px 12px' }}>
+                <b style={{ display:'block', fontSize:13, fontWeight:500 }}>{img.prompt.slice(0,28)}…</b>
+                <span style={{ fontFamily:'var(--mono)', fontSize:10.5, color:'var(--mut)' }}>{img.model}</span>
               </div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Responsive grid */}
       <style>{`
-        @media (max-width: 980px) { .launch-grid { grid-template-columns: repeat(3,1fr) !important; } }
-        @media (max-width: 560px) { .launch-grid { grid-template-columns: repeat(2,1fr) !important; } }
-        @media (max-width: 899px) { div[style*="paddingBottom: 110"] { padding-bottom: 120px !important; } }
+        @media(max-width:980px){.launch-grid{grid-template-columns:repeat(3,1fr)!important}}
+        @media(max-width:560px){.launch-grid{grid-template-columns:repeat(2,1fr)!important}}
+        @media(max-width:899px){.launch-grid{margin-bottom:120px}}
+        @keyframes pulse-dot{0%,100%{box-shadow:0 0 0 0 rgba(23,143,95,.4)}50%{box-shadow:0 0 0 6px rgba(23,143,95,0)}}
       `}</style>
     </div>
   );

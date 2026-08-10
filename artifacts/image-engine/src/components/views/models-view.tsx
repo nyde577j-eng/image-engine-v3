@@ -84,7 +84,7 @@ export function ModelsView() {
                 {m.tags.map(tag => <span key={tag} className="ie-tag dim">{tag}</span>)}
               </div>
               <div style={{ display: 'grid', gap: 8 }}>
-                {[['SPEED', m.sp], ['QUALITY', m.qu]].map(([lbl, val]) => (
+                {[['DOWNLOADS', Math.round(m.downloads / 1000)], ['LIKES', Math.round(m.likes / 100)]].map(([lbl, val]) => (
                   <div key={String(lbl)} style={{ display: 'grid', gridTemplateColumns: '52px 1fr 34px', alignItems: 'center', gap: 10, fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--mut)' }}>
                     <span>{lbl}</span>
                     <div style={{ height: 4, borderRadius: 99, background: 'var(--line)', overflow: 'hidden' }}>

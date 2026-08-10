@@ -31,7 +31,7 @@ const SOCIAL_ICONS: Record<string, React.ComponentType<{ className?: string; siz
 function SocialIcon({ icon }: { icon: string }) {
   const key = icon.toLowerCase().replace(/[^a-z]/g, '');
   const Icon = SOCIAL_ICONS[key] ?? Globe2;
-  return <Icon className="h-5 w-5 shrink-0" style={{ color: 'var(--acc)' }} size={20} />;
+  return <Icon className="h-5 w-5 shrink-0 text-[var(--acc)]" size={20} />;
 }
 
 function Toggle({ label, desc, checked, onChange }: { label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) {

@@ -133,7 +133,7 @@ export function AdminView() {
                 cursor: 'pointer', transition: '.15s', whiteSpace: 'nowrap',
               }}
             >
-              <Icon style={{ width: 14, height: 14, flexShrink: 0 }} />
+              <Icon className="h-3.5 w-3.5 shrink-0" />
               {p.label}
             </button>
           );

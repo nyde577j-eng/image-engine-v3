@@ -23,7 +23,7 @@ export function PageHeader({
             width: 44, height: 44, borderRadius: 12,
             background: 'var(--accsoft)', display: 'grid', placeItems: 'center', flexShrink: 0,
           }}>
-            <Icon className="h-5 w-5" style={{ color: 'var(--acc)' }} />
+            <Icon className="h-5 w-5 text-[var(--acc)]" />
           </div>
         )}
         <div>
