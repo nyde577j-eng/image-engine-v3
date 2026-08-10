@@ -1,289 +1,144 @@
-
-import {
-  Bell,
-  Search,
-  Menu,
-  ChevronDown,
-  Sun,
-  Moon,
-  Zap,
-  User,
-  CreditCard,
-  KeyRound,
-  Shield,
-  Palette,
-  Globe,
-  LifeBuoy,
-  BookOpen,
-  Settings,
-  Check,
-  Brush,
-  Waves,
-  Leaf,
-  Flower2,
-  Bot,
-  Star,
-  Sparkles,
-  Gem,
-  Flame,
-} from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { Search, Zap } from 'lucide-react';
 import { useApp } from '@/components/providers/app-provider';
 import { useAdminAuth } from '@/components/providers/admin-auth-provider';
-import { cn } from '@/lib/utils';
-import { useTheme } from 'next-themes';
-import { t } from '@/lib/i18n';
+import { useCommandPalette } from '@/components/ui/command-palette';
+import type { ViewId } from '@/lib/types';
 
-const PROFILE_FOOTER = [
-  { icon: LifeBuoy, labelKey: 'topbar.support' },
-  { icon: BookOpen, labelKey: 'topbar.documentation' },
-] as const;
-
-const AVATAR_MAP: Record<string, { bg: string; icon: React.ComponentType<{ className?: string }> }> = {
-  a1: { bg: 'from-violet-500 to-purple-600', icon: Brush },
-  a2: { bg: 'from-amber-400 to-orange-500', icon: Zap },
-  a3: { bg: 'from-cyan-400 to-blue-500', icon: Waves },
-  a4: { bg: 'from-emerald-400 to-green-500', icon: Leaf },
-  a5: { bg: 'from-rose-400 to-pink-500', icon: Flower2 },
-  a6: { bg: 'from-slate-400 to-gray-600', icon: Bot },
-  a7: { bg: 'from-yellow-400 to-amber-500', icon: Star },
-  a8: { bg: 'from-indigo-400 to-violet-500', icon: Sparkles },
-  a9: { bg: 'from-teal-400 to-cyan-500', icon: Gem },
-  a10: { bg: 'from-red-400 to-rose-500', icon: Flame },
+const VIEW_TITLES: Record<ViewId, string> = {
+  home:        'Studio Home',
+  generate:    'Image Generation',
+  editor:      'Image Editor',
+  gallery:     'Gallery',
+  history:     'History',
+  collections: 'Collections',
+  workflows:   'Workflows',
+  models:      'Models',
+  api:         'API',
+  chat:        'Assistant Chat',
+  settings:    'Settings',
+  admin:       'Control Center',
+  videos:      'Videos',
+  tts:         'Text to Speech',
 };
 
-export function TopBar({ onMenu }: { onMenu: () => void }) {
-  const { setActiveView, locale, setLocale, credits, avatarId, setSettingsSection, isAdmin } = useApp();
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
-  const { logout: adminLogout } = useAdminAuth();
-  const profileRef = useRef<HTMLDivElement>(null);
-
-  const WORKSPACES = [
-    t(locale, 'workspace.personal'),
-    t(locale, 'workspace.acme'),
-    t(locale, 'workspace.design'),
-  ];
-
-  const PROFILE_MENU = [
-    { icon: CreditCard, label: t(locale, 'profile.billing'),     section: 'billing',      view: 'settings' as const },
-    { icon: KeyRound, label: t(locale, 'profile.apiKeys'),        section: null,           view: 'api' as const },
-    { icon: Shield,   label: t(locale, 'profile.security'),       section: 'security',     view: 'settings' as const },
-    { icon: Globe,    label: t(locale, 'profile.language'),        section: 'language',     view: 'settings' as const },
-  ] as const;
-
-  // Close profile menu on outside click
-  useEffect(() => {
-    if (!profileOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-        setProfileOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [profileOpen]);
+export function TopBar() {
+  const { activeView, credits, isAdmin } = useApp();
+  const { isAuthenticated } = useAdminAuth();
+  const { open: openPalette } = useCommandPalette();
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-border bg-background/70 px-3 backdrop-blur-xl sm:gap-3 sm:px-4 md:px-6">
+    <header
+      style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 30,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        padding: '14px clamp(16px,3vw,32px)',
+        background: 'color-mix(in srgb, var(--bg) 82%, transparent)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        borderBottom: '1px solid var(--line)',
+      }}
+    >
+      {/* Breadcrumb */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+        <span className="mic" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          IMAGE ENGINE
+          {(isAdmin || isAuthenticated) && (
+            <span style={{
+              background: 'var(--err)', color: '#fff',
+              padding: '2px 7px', borderRadius: 5, fontSize: 9.5,
+              fontFamily: 'var(--mono)', letterSpacing: '.12em', textTransform: 'uppercase',
+            }}>
+              CONTROL CENTER
+            </span>
+          )}
+        </span>
+        <h1 style={{ fontSize: 'clamp(17px,2.2vw,21px)', fontWeight: 700, letterSpacing: '-.01em', lineHeight: 1.2 }}>
+          {VIEW_TITLES[activeView] ?? activeView}
+        </h1>
+      </div>
+
+      {/* Spacer */}
+      <div style={{ flex: 1 }} />
+
+      {/* Search / Palette button */}
       <button
-        onClick={onMenu}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground lg:hidden"
-        aria-label="Open menu"
+        onClick={openPalette}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          border: '1px solid var(--line2)', background: 'var(--card)',
+          borderRadius: 12, padding: '9px 12px', color: 'var(--mut)',
+          cursor: 'pointer', transition: '.18s', fontSize: 14,
+          fontFamily: 'var(--ui)',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ink)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--ink)'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--line2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--mut)'; }}
+        aria-label="Open command palette"
       >
-        <Menu className="h-5 w-5" />
+        <Search style={{ width: 16, height: 16 }} />
+        <span className="hide-sm">Search or jump to…</span>
+        <kbd style={{
+          fontFamily: 'var(--mono)', fontSize: 10.5,
+          border: '1px solid var(--line2)', borderRadius: 6,
+          padding: '2px 6px', background: 'var(--panel)',
+          display: 'none',
+        }} className="show-lg">⌘K</kbd>
       </button>
 
-      {/* Site name */}
-      <div className="flex shrink-0 items-center gap-2">
-        <img
-          src="/logo.png"
-          alt="Image Engine"
-          className="h-9 w-auto shrink-0 object-contain"
-        />
-      </div>
-
-      {/* Search */}
-      <div className="relative ml-auto hidden max-w-md flex-1 xs:block sm:flex md:max-w-xs lg:max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder={t(locale, 'topbar.searchPlaceholder')}
-          className="h-9 w-full rounded-xl border border-border bg-card/50 pl-9 pr-16 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40 focus:bg-card"
-        />
-        <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:block">
-          {t(locale, 'settings.searchShortcut')}
-        </kbd>
-      </div>
-
-      <div className="ml-auto flex items-center gap-1.5 md:ml-3">
-        {/* Credits — يظهر فقط للمستخدمين العاديين */}
-        {isAdmin ? (
-          <div className="hidden items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 lg:flex">
-            <Shield className="h-4 w-4 text-primary" />
-            <span className="text-xs font-semibold text-primary">Admin</span>
-          </div>
-        ) : (
-          <div className="hidden items-center gap-2 rounded-xl border border-border bg-card/50 px-3 py-2 lg:flex">
-            <Zap className="h-4 w-4 text-primary" />
-            <span className="text-sm font-semibold">{credits}</span>
-            <span className="text-xs text-muted-foreground">{t(locale, 'topbar.credits')}</span>
-          </div>
-        )}
-
-        {/* Notifications */}
-        <div className="relative">
-          <button
-            onClick={() => setNotifOpen((v) => !v)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
-          </button>
-          <AnimatePresence>
-            {notifOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setNotifOpen(false)}
-                />
-                <motion.div
-                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full z-20 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
-                >
-                  <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                    <span className="text-sm font-semibold">Notifications</span>
-                    <span className="rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                      3 new
-                    </span>
-                  </div>
-                  <div className="max-h-80 overflow-y-auto scrollbar-thin">
-                    {[
-                      {
-                        title: 'Generation complete',
-                        desc: 'Your image "Cinematic Portrait" is ready',
-                        time: '2m ago',
-                      },
-                      {
-                        title: 'New model available',
-                        desc: 'Lumen-XL v2.1 has been updated',
-                        time: '1h ago',
-                      },
-                      {
-                        title: 'Credits refilled',
-                        desc: '500 credits added to your account',
-                        time: '3h ago',
-                      },
-                    ].map((n, i) => (
-                      <div
-                        key={i}
-                        className="flex gap-3 border-b border-border/50 px-4 py-3 transition-colors hover:bg-secondary/40"
-                      >
-                        <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">{n.title}</p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {n.desc}
-                          </p>
-                          <p className="mt-1 text-[10px] text-muted-foreground">
-                            {n.time}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
+      {/* Credits / Admin badge */}
+      {isAdmin || isAuthenticated ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontFamily: 'var(--mono)', fontSize: 12,
+          border: '1px solid #fde8e5', background: '#fde8e5',
+          borderRadius: 12, padding: '9px 12px', color: 'var(--err)',
+        }}>
+          <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+            <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>
+          </svg>
+          Admin
         </div>
-
-        {/* Profile dropdown (replaces standalone Settings icon + old profile button) */}
-        <div className="relative" ref={profileRef}>
-          <button
-            onClick={() => setProfileOpen((v) => !v)}
-            className={cn(
-              'flex items-center justify-center rounded-xl border p-2 transition-colors',
-              profileOpen
-                ? 'border-primary/40 bg-card text-primary'
-                : 'border-border bg-card/50 text-muted-foreground hover:border-primary/40 hover:bg-card hover:text-foreground',
-            )}
-            aria-label="Open menu"
-          >
-            <motion.div
-              animate={{ rotate: profileOpen ? 180 : 0 }}
-              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-            >
-              <ChevronDown className="h-5 w-5" />
-            </motion.div>
-          </button>
-
-          <AnimatePresence>
-            {profileOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 top-full z-30 mt-2 w-64 overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
-              >
-                {/* Main menu items */}
-                <div className="p-1">
-                  {PROFILE_MENU.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.label}
-                        onClick={() => {
-                          if (item.section) setSettingsSection(item.section);
-                          setActiveView(item.view);
-                          setProfileOpen(false);
-                        }}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
-                      >
-                        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-border" />
-
-                {/* Footer items */}
-                <div className="p-1">
-                  <button
-                    onClick={() => { setSettingsSection('support'); setActiveView('settings'); setProfileOpen(false); }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
-                  >
-                    <LifeBuoy className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    {t(locale, 'topbar.support')}
-                  </button>
-                  <button
-                    onClick={() => { setSettingsSection('docs'); setActiveView('settings'); setProfileOpen(false); }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
-                  >
-                    <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    {t(locale, 'topbar.documentation')}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+      ) : (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontFamily: 'var(--mono)', fontSize: 12,
+          border: '1px solid var(--line2)', background: 'var(--card)',
+          borderRadius: 12, padding: '9px 12px',
+        }} className="hide-sm">
+          <svg style={{ width:16,height:16,fill:'none',stroke:'var(--acc)',strokeWidth:1.8 }} viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="8"/><path d="M12 7v10M15 9.5c-1-1-5-1-5 1s5 1.5 5 3.5-4 2-5 1"/>
+          </svg>
+          {credits.toLocaleString()}
         </div>
+      )}
+
+      {/* Avatar */}
+      <div style={{
+        width: 38, height: 38, borderRadius: 12,
+        background: 'var(--ink)', color: 'var(--bg)',
+        display: 'grid', placeItems: 'center',
+        fontWeight: 700, fontSize: 13, flexShrink: 0,
+        userSelect: 'none',
+      }}>
+        S
       </div>
+
+      {/* Inline responsive overrides */}
+      <style>{`
+        @media (max-width: 640px) {
+          .hide-sm { display: none !important; }
+        }
+        @media (min-width: 900px) {
+          .show-lg { display: inline !important; }
+        }
+      `}</style>
     </header>
   );
 }
 
-// Re-export Settings icon usage suppressed — it was removed from the top bar
-// but we keep the import name available to avoid breaking tree-shaking if
-// other files re-export from here. (Not actively used.)
-export const _SettingsIcon = Settings;
+// Keep for backward compat
+export const _SettingsIcon = null;

@@ -1,4 +1,5 @@
 export type ViewId =
+  | 'home'
   | 'generate'
   | 'editor'
   | 'gallery'

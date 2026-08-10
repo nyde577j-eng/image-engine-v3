@@ -58,8 +58,8 @@ export function useApp() {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activeView, setActiveViewState] = useState<ViewId>(() => {
     const stored = window.localStorage.getItem(VIEW_KEY) as ViewId | null;
-    const valid: ViewId[] = ['generate','editor','gallery','history','collections','workflows','models','api','chat','settings','admin','videos','tts'];
-    return stored && valid.includes(stored) ? stored : 'editor';
+    const valid: ViewId[] = ['home','generate','editor','gallery','history','collections','workflows','models','api','chat','settings','admin','videos','tts'];
+    return stored && valid.includes(stored) ? stored : 'home';
   });
 
   const setActiveView = useCallback((v: ViewId) => {

@@ -1,74 +1,34 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Sidebar } from './sidebar';
-import { TopBar } from './topbar';
-import { Footer } from './footer';
-import { AnnouncementBar } from './announcement-bar';
 import { AppProvider, useApp } from '@/components/providers/app-provider';
 import { AdminAuthProvider } from '@/components/providers/admin-auth-provider';
+import { Rail } from './rail';
+import { TopBar } from './topbar';
 import { ViewRouter } from '@/components/views/view-router';
-import { X } from 'lucide-react';
+import { CommandPalette } from '@/components/ui/command-palette';
+import { MobileBottomBar } from './mobile-bottom-bar';
 
 function ShellContent() {
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const { activeView } = useApp();
 
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [activeView]);
-
   return (
-    <div className="flex h-screen bg-background">
-      {/* Desktop sidebar */}
-      <div className="hidden lg:block">
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
-      </div>
+    <div
+      style={{ display: 'grid', gridTemplateColumns: '68px 1fr', minHeight: '100vh', position: 'relative', zIndex: 1 }}
+    >
+      {/* ── Rail (desktop) ── */}
+      <Rail />
 
-      {/* Mobile drawer */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
-          />
-        )}
-        {mobileOpen && (
-          <motion.div
-            key="drawer"
-            initial={{ x: -300 }}
-            animate={{ x: 0 }}
-            exit={{ x: -300 }}
-            transition={{ type: 'spring', stiffness: 360, damping: 36 }}
-            className="fixed left-0 top-0 z-50 h-full w-64"
-          >
-            <div className="relative h-full">
-              <Sidebar collapsed={false} onToggle={() => setMobileOpen(false)} />
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="absolute -right-12 top-4 flex h-9 w-9 items-center justify-center rounded-lg bg-card text-foreground shadow-lg"
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Main area */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <AnnouncementBar />
-        <TopBar onMenu={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-hidden">
+      {/* ── Main column ── */}
+      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <TopBar />
+        <main style={{ flex: 1, overflow: 'hidden' }}>
           <ViewRouter />
         </main>
-        <Footer />
       </div>
+
+      {/* ── Mobile bottom bar ── */}
+      <MobileBottomBar />
+
+      {/* ── Command Palette (global) ── */}
+      <CommandPalette />
     </div>
   );
 }

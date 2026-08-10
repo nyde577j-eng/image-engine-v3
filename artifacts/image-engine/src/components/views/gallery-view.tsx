@@ -1,418 +1,217 @@
-
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Images,
-  Download,
-  Share2,
-  Trash2,
-  Star,
-  Copy,
-  RotateCcw,
-  X,
-  Search,
-  LayoutGrid,
-  Rows3,
-  Loader2,
-} from 'lucide-react';
 import { useApp } from '@/components/providers/app-provider';
-import { PageContainer, PageHeader } from './shared';
-import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { SAMPLE_IMAGES } from '@/lib/mock-data';
 import type { StoredImage } from '@/lib/admin-types';
 
-// Convert SAMPLE_IMAGES to StoredImage shape for fallback display
-const FALLBACK_IMAGES: StoredImage[] = SAMPLE_IMAGES.map((img) => ({
-  id: img.id,
-  url: img.url,
-  prompt: img.prompt,
-  model: img.model,
-  width: img.width,
-  height: img.height,
-  favorite: img.favorite,
-  tags: [],
-  created_at: img.createdAt,
+const FALLBACK: StoredImage[] = SAMPLE_IMAGES.map(img => ({
+  id: img.id, url: img.url, prompt: img.prompt, model: img.model,
+  width: img.width, height: img.height, favorite: img.favorite,
+  tags: [], created_at: img.createdAt,
 }));
+
+const FILTERS = ['All', 'Fantasy', 'Portraits', 'Product', 'Abstract', 'Cinematic'];
 
 export function GalleryView() {
   const { setPrompt, setActiveView } = useApp();
   const [images, setImages] = useState<StoredImage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'favorites'>('all');
-  const [layout, setLayout] = useState<'masonry' | 'grid'>('masonry');
+  const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<StoredImage | null>(null);
 
-  const fetchImages = useCallback(async () => {
+  const fetch_ = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('stored_images')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) {
-        setImages(data as StoredImage[]);
-      } else {
-        // Supabase empty or unavailable — show sample images as fallback
-        setImages(FALLBACK_IMAGES);
-      }
-    } catch {
-      setImages(FALLBACK_IMAGES);
-    }
+      const { data, error } = await supabase.from('stored_images').select('*').order('created_at', { ascending: false });
+      setImages(!error && data && data.length > 0 ? (data as StoredImage[]) : FALLBACK);
+    } catch { setImages(FALLBACK); }
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchImages(); }, [fetchImages]);
+  useEffect(() => { fetch_(); }, [fetch_]);
 
   const filtered = useMemo(() => {
-    let result = images;
-    if (filter === 'favorites') result = result.filter((img) => img.favorite);
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (img) =>
-          img.prompt.toLowerCase().includes(q) ||
-          img.model.toLowerCase().includes(q),
-      );
-    }
-    return result;
+    let r = images;
+    if (filter !== 'All') r = r.filter(i => (i.tags ?? []).some((t: string) => t.toLowerCase().includes(filter.toLowerCase())) || i.model.toLowerCase().includes(filter.toLowerCase()));
+    if (search) { const q = search.toLowerCase(); r = r.filter(i => i.prompt.toLowerCase().includes(q) || i.model.toLowerCase().includes(q)); }
+    return r;
   }, [images, filter, search]);
 
-  const toggleFavorite = async (img: StoredImage) => {
+  const toggleFav = async (img: StoredImage) => {
     await supabase.from('stored_images').update({ favorite: !img.favorite }).eq('id', img.id);
-    setImages((prev) => prev.map((i) => i.id === img.id ? { ...i, favorite: !i.favorite } : i));
+    setImages(p => p.map(i => i.id === img.id ? { ...i, favorite: !i.favorite } : i));
   };
-
-  const deleteImage = async (id: string) => {
+  const deleteImg = async (id: string) => {
     await supabase.from('stored_images').delete().eq('id', id);
-    setImages((prev) => prev.filter((i) => i.id !== id));
+    setImages(p => p.filter(i => i.id !== id));
     if (selected?.id === id) setSelected(null);
   };
 
-  const handleReuse = (img: StoredImage) => {
-    setPrompt(img.prompt);
-    setActiveView('generate');
-  };
-
   return (
-    <PageContainer>
-      <PageHeader
-        title="Gallery"
-        description={`${filtered.length} images in your workspace`}
-        icon={Images}
-        actions={
-          <>
-            <div className="relative hidden sm:block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search..."
-                className="h-9 w-44 rounded-xl border border-border bg-card/50 pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary/40"
-              />
-            </div>
-            <div className="flex rounded-xl border border-border bg-card/50 p-1">
-              <button
-                onClick={() => setLayout('masonry')}
-                className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
-                  layout === 'masonry' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setLayout('grid')}
-                className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
-                  layout === 'grid' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <Rows3 className="h-4 w-4" />
-              </button>
-            </div>
-          </>
-        }
-      />
-
-      <div className="mt-5 flex gap-2">
-        {(['all', 'favorites'] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={cn(
-              'rounded-xl border px-3 py-1.5 text-sm font-medium capitalize transition-all',
-              filter === f
-                ? 'border-primary/40 bg-primary/10 text-primary'
-                : 'border-border bg-card/40 text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {f === 'favorites' && <Star className="mr-1.5 inline h-3.5 w-3.5" />}
-            {f}
-          </button>
-        ))}
+    <div style={{ padding: 'clamp(16px,3vw,30px)', paddingBottom: 50, maxWidth: 1460, margin: '0 auto' }}>
+      {/* Header */}
+      <div className="vhead">
+        <div>
+          <h2>Gallery</h2>
+          <p id="galCount">{filtered.length} assets in your library</p>
+        </div>
+        <label style={{ cursor: 'pointer' }}>
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={() => {}} />
+          <span className="btn ghost sm">
+            <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+              <path d="M12 21V9M7 14l5-5 5 5M4 3h16"/>
+            </svg>
+            Upload
+          </span>
+        </label>
       </div>
 
+      {/* Search + filters */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 18 }}>
+        <input
+          className="ie-inp"
+          style={{ maxWidth: 260 }}
+          placeholder="Search assets…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {FILTERS.map(f => (
+            <button key={f} className={`chip${filter === f ? ' on' : ''}`} onClick={() => setFilter(f)}>{f}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Grid */}
       {loading ? (
-        <div className="mt-16 flex flex-col items-center justify-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm">Loading gallery...</p>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2px solid var(--acc)', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="mt-16 flex flex-col items-center justify-center gap-3 text-muted-foreground">
-          <Images className="h-12 w-12 opacity-40" />
-          <p>{search ? 'No images found' : 'No images yet — generate your first image!'}</p>
-        </div>
-      ) : layout === 'masonry' ? (
-        <div className="mt-6 columns-2 gap-4 sm:columns-3 lg:columns-4 xl:columns-5">
-          {filtered.map((img, i) => (
-            <GalleryCard
-              key={img.id}
-              img={img}
-              index={i}
-              onFavorite={() => toggleFavorite(img)}
-              onClick={() => setSelected(img)}
-              onReuse={() => handleReuse(img)}
-            />
-          ))}
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--mut)' }}>
+          <p style={{ fontSize: 15, marginBottom: 6 }}>No results.</p>
+          <span className="mic">try another tag or clear search</span>
         </div>
       ) : (
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div style={{ columns: '4 230px', columnGap: 14 }}>
           {filtered.map((img, i) => (
-            <GalleryCard
+            <motion.div
               key={img.id}
-              img={img}
-              index={i}
-              onFavorite={() => toggleFavorite(img)}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(i * 0.03, 0.3) }}
+              style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', marginBottom: 14, breakInside: 'avoid', border: '1px solid var(--line)', background: 'var(--card)', cursor: 'pointer' }}
+              className="gitem-wrap"
               onClick={() => setSelected(img)}
-              onReuse={() => handleReuse(img)}
-              fixed
-            />
+            >
+              <img
+                src={img.url} alt={img.prompt}
+                style={{ width: '100%', display: 'block', transition: 'transform .45s' }}
+                loading="lazy"
+                onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.04)')}
+                onMouseLeave={e => (e.currentTarget.style.transform = '')}
+                onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0.3'; }}
+              />
+              {/* Overlay */}
+              <div className="gitem-ov" style={{
+                position: 'absolute', inset: 'auto 0 0 0',
+                padding: '34px 12px 10px',
+                background: 'linear-gradient(transparent, rgba(10,9,7,.88))',
+                display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8,
+                opacity: 0, transition: '.22s',
+              }}>
+                <span style={{ color: '#fff', fontSize: 12.5, fontWeight: 500 }}>
+                  {img.prompt.slice(0, 40)}…
+                  <span style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 10, color: 'rgba(255,255,255,.6)' }}>
+                    {img.model} · {new Date(img.created_at).toLocaleDateString()}
+                  </span>
+                </span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="ibtn d" onClick={e => { e.stopPropagation(); toggleFav(img); }} aria-label="Favorite">
+                    <svg style={{ width:15,height:15,fill: img.favorite ? 'var(--acc)' : 'none',stroke: img.favorite ? 'var(--acc)' : 'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+                      <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>
+                    </svg>
+                  </button>
+                  <a className="ibtn d" href={img.url} download={`image-${img.id}.png`} onClick={e => e.stopPropagation()} aria-label="Download">
+                    <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+                      <path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>
+                    </svg>
+                  </a>
+                  <button className="ibtn d" onClick={e => { e.stopPropagation(); setPrompt(img.prompt); setActiveView('generate'); }} aria-label="Reuse">
+                    <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+                      <path d="M21 3v6h-6"/><path d="M20.5 9A8.5 8.5 0 1 0 21 12"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           ))}
         </div>
       )}
 
+      {/* Lightbox */}
       <AnimatePresence>
         {selected && (
-          <Lightbox
-            image={selected}
-            onClose={() => setSelected(null)}
-            onFavorite={() => toggleFavorite(selected)}
-            onReuse={() => handleReuse(selected)}
-            onDelete={() => deleteImage(selected.id)}
-          />
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setSelected(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(20,19,16,.85)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 18 }}
+          >
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width: 'min(1060px,100%)', maxHeight: '92vh', background: 'var(--dark)', border: '1px solid var(--dline)', borderRadius: 22, overflow: 'hidden', display: 'grid', gridTemplateColumns: '1fr 300px', position: 'relative' }}
+              className="lb-box"
+            >
+              <button className="ibtn d" onClick={() => setSelected(null)} style={{ position: 'absolute', top: 14, right: 14, zIndex: 2 }}>
+                <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+              </button>
+              {/* Image side */}
+              <div style={{ background: 'var(--dark2)', display: 'grid', placeItems: 'center', padding: 16, minHeight: 0 }}>
+                <img src={selected.url} alt={selected.prompt} style={{ maxHeight: '74vh', borderRadius: 10, objectFit: 'contain', width: '100%' }} />
+              </div>
+              {/* Info side */}
+              <div style={{ padding: 20, color: 'var(--dtext)', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
+                <h3 style={{ fontSize: 17, fontWeight: 700 }}>{selected.prompt.slice(0, 60)}</h3>
+                <div style={{ display: 'grid', gap: 8, fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--dmut)' }}>
+                  {[['Model', selected.model], ['Size', `${selected.width}×${selected.height}`], ['Created', new Date(selected.created_at).toLocaleDateString()]].map(([k, v]) => (
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--dline)', paddingBottom: 8 }}>
+                      <span>{k}</span><span style={{ color: 'var(--dtext)' }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
+                  <button className="btn dark" onClick={() => { setPrompt(selected.prompt); setActiveView('editor'); setSelected(null); }}>
+                    <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M4 20l4-1L19 8l-3-3L5 16z"/></svg>
+                    Open in editor
+                  </button>
+                  <button className="btn dark" onClick={() => { setPrompt(selected.prompt); setActiveView('generate'); setSelected(null); }}>
+                    <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M21 3v6h-6"/><path d="M20.5 9A8.5 8.5 0 1 0 21 12"/></svg>
+                    Create variation
+                  </button>
+                  <a className="btn dark" href={selected.url} download={`image-${selected.id}.png`}>
+                    <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>
+                    Download
+                  </a>
+                  <button onClick={() => deleteImg(selected.id)} style={{ background: 'var(--dark2)', border: '1px solid var(--dline)', color: '#ff8f80', borderRadius: 12, padding: '10px 16px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--ui)' }}>
+                    <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/></svg>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
-    </PageContainer>
-  );
-}
 
-function GalleryCard({
-  img,
-  index,
-  onFavorite,
-  onClick,
-  onReuse,
-  fixed = false,
-}: {
-  img: StoredImage;
-  index: number;
-  onFavorite: () => void;
-  onClick: () => void;
-  onReuse: () => void;
-  fixed?: boolean;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard?.writeText(img.prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.3 }}
-      className={cn(
-        'group relative mb-4 break-inside-avoid overflow-hidden rounded-xl border border-border bg-card/40 cursor-pointer',
-        fixed && 'aspect-square',
-      )}
-      onClick={onClick}
-    >
-      <img
-        src={img.url}
-        alt={img.prompt}
-        className={cn('w-full object-cover transition-transform duration-500 group-hover:scale-105', fixed ? 'h-full' : 'auto')}
-        loading="lazy"
-      />
-
-      <button
-        onClick={(e) => { e.stopPropagation(); onFavorite(); }}
-        className={cn(
-          'absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg backdrop-blur transition-all',
-          img.favorite ? 'bg-primary/80 text-black opacity-100' : 'bg-background/60 text-foreground opacity-0 group-hover:opacity-100',
-        )}
-      >
-        <Star className={cn('h-4 w-4', img.favorite && 'fill-current')} />
-      </button>
-
-      <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-        <p className="line-clamp-2 px-3 pt-8 text-xs text-white/90">{img.prompt}</p>
-        <div className="flex items-center justify-between p-3">
-          <span className="rounded-md bg-background/60 px-2 py-1 text-[10px] font-medium text-white backdrop-blur">
-            {img.model}
-          </span>
-          <div className="flex gap-1">
-            <button
-              onClick={handleCopy}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-background/60 text-white backdrop-blur transition-colors hover:bg-background"
-              title="Copy prompt"
-            >
-              {copied ? <span className="text-[10px] font-bold text-success">✓</span> : <Copy className="h-3.5 w-3.5" />}
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onReuse(); }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-background/60 text-white backdrop-blur transition-colors hover:bg-background"
-              title="Reuse prompt"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-            </button>
-            <a
-              href={img.url}
-              download={`z-image-${new Date(img.created_at).getTime()}.png`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-background/60 text-white backdrop-blur transition-colors hover:bg-background"
-              title="Download"
-            >
-              <Download className="h-3.5 w-3.5" />
-            </a>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function Lightbox({
-  image,
-  onClose,
-  onFavorite,
-  onReuse,
-  onDelete,
-}: {
-  image: StoredImage;
-  onClose: () => void;
-  onFavorite: () => void;
-  onReuse: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md"
-      onClick={onClose}
-    >
-      <button
-        onClick={onClose}
-        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-xl bg-card/80 text-foreground backdrop-blur transition-colors hover:bg-card"
-      >
-        <X className="h-5 w-5" />
-      </button>
-
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card lg:flex-row"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex-1 overflow-hidden bg-black lg:max-h-[80vh]">
-          <img
-            src={image.url}
-            alt={image.prompt}
-            className="h-full max-h-[40vh] w-full object-contain lg:max-h-[80vh]"
-          />
-        </div>
-
-        <div className="flex w-full flex-col gap-4 overflow-y-auto p-5 lg:w-80 lg:max-h-[80vh]">
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Prompt</h3>
-            <p className="text-sm leading-relaxed">{image.prompt}</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 border-t border-border pt-4 text-sm">
-            <MetaInfo label="Model" value={image.model} />
-            <MetaInfo label="Size" value={`${image.width}×${image.height}`} />
-            <MetaInfo label="Date" value={new Date(image.created_at).toLocaleDateString()} />
-          </div>
-
-          {image.tags && image.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {image.tags.map((tag) => (
-                <span key={tag} className="rounded-md bg-secondary px-2 py-0.5 text-xs text-muted-foreground">{tag}</span>
-              ))}
-            </div>
-          )}
-
-          <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-            <button
-              onClick={onReuse}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl gradient-amber py-2.5 text-sm font-semibold text-black transition-all hover:glow-amber"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reuse
-            </button>
-            <button
-              onClick={onFavorite}
-              className={cn(
-                'flex h-10 w-10 items-center justify-center rounded-xl border transition-colors',
-                image.favorite ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Star className={cn('h-4 w-4', image.favorite && 'fill-current')} />
-            </button>
-            <a
-              href={image.url}
-              download={`z-image-${new Date(image.created_at).getTime()}.png`}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <Download className="h-4 w-4" />
-            </a>
-            <button
-              onClick={async () => {
-                try {
-                  if (navigator.share) await navigator.share({ url: image.url, title: 'Generated Image' });
-                  else await navigator.clipboard.writeText(image.url);
-                } catch { /* ignore */ }
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <Share2 className="h-4 w-4" />
-            </button>
-            <button
-              onClick={onDelete}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-destructive/30 text-destructive transition-colors hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function MetaInfo({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-0.5 font-medium">{value}</p>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .gitem-wrap:hover .gitem-ov { opacity: 1 !important; }
+        @media(hover:none) { .gitem-ov { opacity: 1 !important; } }
+        @media(max-width:860px) { .lb-box { grid-template-columns: 1fr !important; overflow: auto; } }
+      `}</style>
     </div>
   );
 }

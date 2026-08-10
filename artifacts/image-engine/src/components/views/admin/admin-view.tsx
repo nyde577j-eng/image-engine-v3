@@ -90,39 +90,32 @@ export function AdminView() {
   const current = SUB_PAGES.find((p) => p.id === subPage)!;
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-4 py-6 md:px-8 md:py-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card/60">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
-              Engine Control Center
-            </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">{current.description}</p>
-          </div>
-        </div>
+    <div style={{ maxWidth: 1600, margin: '0 auto', padding: 'clamp(16px,3vw,30px)', paddingBottom: 50 }}>
 
-        {/* Admin session indicator + logout */}
-        <div className="flex items-center gap-2">
-          <span className="hidden items-center gap-2 rounded-xl border border-border bg-card/50 px-3 py-2 sm:flex">
-            <Shield className="h-4 w-4 text-primary" />
-            <span className="text-xs font-medium">{username ?? 'admin'}</span>
+      {/* ── Admin header ── */}
+      <div className="ie-admhead" style={{ marginBottom: 18 }}>
+        <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--err)', display: 'grid', placeItems: 'center', color: '#fff', flexShrink: 0 }}>
+          <ShieldCheck style={{ width: 20, height: 20 }} />
+        </div>
+        <div>
+          <span className="mic d" style={{ display: 'block' }}>RESTRICTED · OPERATORS ONLY</span>
+          <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-.01em' }}>Control Center</h2>
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="ie-tag ok">env: production</span>
+          <span className="ie-tag dim">v2.4</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--dline)', borderRadius: 10, padding: '6px 10px', fontSize: 12, fontFamily: 'var(--mono)', color: 'var(--dmut)' }}>
+            <Shield style={{ width: 14, height: 14 }} />{username ?? 'admin'}
           </span>
-          <button
-            onClick={() => { logout(); setActiveView('generate'); }}
-            className="flex items-center gap-1.5 rounded-xl border border-destructive/30 px-3 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            Admin Sign Out
+          <button onClick={() => { logout(); setActiveView('generate'); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid rgba(211,58,44,.4)', borderRadius: 10, padding: '6px 10px', fontSize: 12, color: 'var(--err)', background: 'none', cursor: 'pointer', fontFamily: 'var(--ui)' }}>
+            <LogOut style={{ width: 14, height: 14 }} /> Sign Out
           </button>
         </div>
       </div>
 
-      {/* Sub-navigation */}
-      <div className="mt-6 flex gap-2 overflow-x-auto scrollbar-thin pb-2">
+      {/* ── Sub-navigation (tabs) ── */}
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 16, scrollbarWidth: 'thin' }}>
         {SUB_PAGES.map((p) => {
           const Icon = p.icon;
           const active = subPage === p.id;
@@ -130,34 +123,25 @@ export function AdminView() {
             <button
               key={p.id}
               onClick={() => setSubPage(p.id)}
-              className={cn(
-                'group relative flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all',
-                active
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
-              )}
+              style={{
+                position: 'relative', display: 'flex', alignItems: 'center', gap: 6,
+                flexShrink: 0, padding: '7px 14px', borderRadius: 999,
+                border: active ? '1px solid var(--ink)' : '1px solid var(--line2)',
+                background: active ? 'var(--ink)' : 'var(--card)',
+                color: active ? 'var(--bg)' : 'var(--mut)',
+                fontFamily: 'var(--ui)', fontSize: 13, fontWeight: active ? 500 : 400,
+                cursor: 'pointer', transition: '.15s', whiteSpace: 'nowrap',
+              }}
             >
-              {active && (
-                <motion.div
-                  layoutId="admin-subpage-active"
-                  className="absolute inset-0 rounded-xl border border-primary/30 bg-primary/10"
-                  transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                />
-              )}
-              <Icon
-                className={cn(
-                  'relative z-10 h-4 w-4 transition-colors',
-                  active ? 'text-primary' : 'group-hover:text-foreground',
-                )}
-              />
-              <span className="relative z-10 whitespace-nowrap">{p.label}</span>
+              <Icon style={{ width: 14, height: 14, flexShrink: 0 }} />
+              {p.label}
             </button>
           );
         })}
       </div>
 
-      {/* Content */}
-      <div className="mt-6">
+      {/* ── Content ── */}
+      <div style={{ marginTop: 6 }}>
         <AnimatePresence mode="wait">
           <AdminPageContainer key={subPage}>
             {subPage === 'image-providers' && <AdminImageProvidersPage />}
