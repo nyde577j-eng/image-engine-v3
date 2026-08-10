@@ -70,7 +70,7 @@ function DownloadModal({ video, onClose }: { video: PageVideo; onClose: () => vo
           maxHeight:'80vh',
           overflowY:'auto',
           /* Extra padding at bottom so content clears mobile nav */
-          paddingBottom:'calc(env(safe-area-inset-bottom, 0px) + 72px)',
+          paddingBottom:'calc(env(safe-area-inset-bottom, 0px) + 120px)',
         }}
         className="vid-modal"
       >
@@ -393,7 +393,7 @@ export function VideosView() {
           }
         }
         @media (max-width: 899px) {
-          .vid-modal { padding-bottom: 76px !important; }
+          .vid-modal { padding-bottom: 120px !important; }
         }
       `}</style>
     </div>
