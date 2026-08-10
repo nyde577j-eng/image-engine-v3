@@ -14,11 +14,12 @@ const TOOLS = [
 ];
 
 const FILTERS = ['None', 'Noir', 'Chrome', 'Fade', 'Ember'];
+
 const ASPECT_OPTIONS = [
-  { label: '1:1', w: 1024, h: 1024 },
-  { label: '3:2', w: 1536, h: 1024 },
-  { label: '2:3', w: 1024, h: 1536 },
-  { label: '16:9', w: 1536, h: 864 },
+  { label: '1:1',  w: 1024, h: 1024 },
+  { label: '3:2',  w: 1536, h: 1024 },
+  { label: '2:3',  w: 1024, h: 1536 },
+  { label: '16:9', w: 1536, h: 864  },
   { label: '9:16', w: 864,  h: 1536 },
 ];
 
@@ -27,16 +28,17 @@ export function EditorView() {
   const { credits, deductCredits, editCost, isAdmin } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [uploaded, setUploaded] = useState<string | null>(null);
+  const [uploaded, setUploaded]       = useState<string | null>(null);
   const [uploadedName, setUploadedName] = useState('');
-  const [result, setResult] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState('');
-  const [activeTool, setActiveTool] = useState('select');
-  const [zoom, setZoom] = useState(100);
-  const [dragging, setDragging] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult]           = useState<string | null>(null);
+  const [prompt, setPrompt]           = useState('');
+  const [activeTool, setActiveTool]   = useState('select');
+  const [zoom, setZoom]               = useState(100);
+  const [dragging, setDragging]       = useState(false);
+  const [isLoading, setIsLoading]     = useState(false);
   const [activeFilter, setActiveFilter] = useState('None');
-  const [lbOpen, setLbOpen] = useState(false);
+  const [lbOpen, setLbOpen]           = useState(false);
+  const [aspect, setAspect]           = useState('1:1');
 
   // Adjust sliders
   const [exp, setExp] = useState(0);
@@ -44,23 +46,19 @@ export function EditorView() {
   const [sat, setSat] = useState(0);
   const [tmp, setTmp] = useState(0);
 
-  // Mobile adjust panel
-  const [adjustOpen, setAdjustOpen] = useState(false);
-
-  // Allow custom size setting
+  // Allow custom size from Supabase
   const [allowCustomSize, setAllowCustomSize] = useState(false);
-  const [aspect, setAspect] = useState('1:1');
   useEffect(() => {
     supabase.from('feature_settings').select('config').eq('id', 'image_editor').maybeSingle()
       .then(({ data }) => {
-        if (data?.config && typeof data.config === 'object') {
-          setAllowCustomSize(!!(data.config as Record<string, unknown>).allow_custom_size);
-        }
+        if (data?.config && typeof data.config === 'object')
+          setAllowCustomSize(!!(data.config as Record<string,unknown>).allow_custom_size);
       });
   }, []);
 
   const currentRatio = ASPECT_OPTIONS.find(r => r.label === aspect) ?? ASPECT_OPTIONS[0];
 
+  /* ── File handling ─────────────────────────────────────────────── */
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
       toast({ title: 'Invalid file', description: 'Upload an image file', variant: 'destructive' });
@@ -78,8 +76,10 @@ export function EditorView() {
     if (file) handleFile(file);
   }, []);
 
+  /* ── Edit via API ──────────────────────────────────────────────── */
   const handleEdit = async () => {
-    if (!uploaded || !prompt.trim()) return;
+    if (!uploaded)      { toast({ title: 'Upload an image first' }); return; }
+    if (!prompt.trim()) { toast({ title: 'Add a prompt first' }); return; }
     if (!isAdmin && credits < editCost) {
       toast({ title: 'Insufficient credits', variant: 'destructive' }); return;
     }
@@ -88,74 +88,75 @@ export function EditorView() {
       const res = await fetch('/api/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: prompt, imageUrl: uploaded, width: currentRatio.w, height: currentRatio.h }),
+        body: JSON.stringify({
+          text: prompt,
+          imageUrl: uploaded,
+          width: currentRatio.w,
+          height: currentRatio.h,
+        }),
       });
       const data = await res.json() as { ok: boolean; imageUrl?: string; imageData?: string; error?: string };
-      if (!data.ok) { toast({ title: 'Edit failed', description: data.error, variant: 'destructive' }); return; }
+      if (!data.ok) {
+        toast({ title: 'Edit failed', description: data.error, variant: 'destructive' }); return;
+      }
       deductCredits(editCost);
       if (data.imageData) setResult(`data:image/png;base64,${data.imageData}`);
       else if (data.imageUrl) setResult(data.imageUrl);
-      toast({ title: 'Image edited' });
+      toast({ title: 'Image edited successfully!' });
     } catch (err) {
       toast({ title: 'Error', description: String(err), variant: 'destructive' });
     } finally { setIsLoading(false); }
   };
 
-  const imgFilter = `brightness(${100 + exp * 0.3}%) contrast(${100 + con * 0.4}%) saturate(${100 + sat * 0.6}%) sepia(${Math.max(0, tmp) * 0.3}%) hue-rotate(${Math.min(0, tmp) * 0.2}deg)`;
-
+  const imgFilter = `brightness(${100+exp*0.3}%) contrast(${100+con*0.4}%) saturate(${100+sat*0.6}%) sepia(${Math.max(0,tmp)*0.3}%) hue-rotate(${Math.min(0,tmp)*0.2}deg)`;
   const displayImg = result ?? uploaded;
 
+  /* ── Render ────────────────────────────────────────────────────── */
   return (
-    <div style={{ padding: 'clamp(16px,3vw,30px)', paddingBottom: 50, maxWidth: 1460, margin: '0 auto' }}>
+    <div style={{ padding: 'clamp(16px,3vw,30px)', paddingBottom: 60, maxWidth: 1460, margin: '0 auto' }}>
 
       {/* ── Top bar ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
-        <span className="mic" style={{ marginRight: 'auto' }}>
-          {uploadedName || 'No file selected'}{displayImg ? ' · 1024×1024' : ''}
+      <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:14 }}>
+        <span className="mic" style={{ marginRight:'auto' }}>
+          {uploadedName || 'No file — drop or upload below'}{displayImg ? ` · ${currentRatio.w}×${currentRatio.h}` : ''}
         </span>
-        <button className="ibtn" onClick={() => toast({ title: 'Undo' })} aria-label="Undo">
-          <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-            <path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/>
-          </svg>
+
+        {/* Undo / Redo */}
+        <button className="ibtn" onClick={() => toast({ title:'Undo' })} aria-label="Undo">
+          <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
         </button>
-        <button className="ibtn" onClick={() => toast({ title: 'Redo' })} aria-label="Redo">
-          <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-            <path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/>
-          </svg>
+        <button className="ibtn" onClick={() => toast({ title:'Redo' })} aria-label="Redo">
+          <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></svg>
         </button>
-        <button className="ibtn" onClick={() => setZoom(z => Math.max(40, z - 10))} aria-label="Zoom out">
+
+        {/* Zoom */}
+        <button className="ibtn" onClick={() => setZoom(z=>Math.max(40,z-10))} aria-label="Zoom out">
           <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
         </button>
-        <span className="mic" style={{ minWidth: 44, textAlign: 'center' }}>{zoom}%</span>
-        <button className="ibtn" onClick={() => setZoom(z => Math.min(200, z + 10))} aria-label="Zoom in">
+        <span className="mic" style={{ minWidth:44, textAlign:'center' }}>{zoom}%</span>
+        <button className="ibtn" onClick={() => setZoom(z=>Math.min(200,z+10))} aria-label="Zoom in">
           <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
         </button>
+
+        {/* Export */}
         {displayImg && (
           <a href={displayImg} download={`edited-${Date.now()}.png`} className="btn ink sm">
-            <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-              <path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>
-            </svg>
+            <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>
             Export
           </a>
         )}
       </div>
 
-      {/* ── Editor layout ── */}
-      <div className="ed-layout" style={{ display: 'grid', gridTemplateColumns: '56px 1fr 292px', gap: 14, alignItems: 'start' }}>
+      {/* ── 3-column editor layout ── */}
+      <div className="ed-layout" style={{ display:'grid', gridTemplateColumns:'56px 1fr 292px', gap:14, alignItems:'start' }}>
 
-        {/* Tools column */}
-        <div style={{
-          display: 'flex', flexDirection: 'column', gap: 8,
-          background: 'var(--dark)', border: '1px solid var(--dline)',
-          borderRadius: 14, padding: 8,
-        }}>
+        {/* ── Tools rail ── */}
+        <div style={{ display:'flex', flexDirection:'column', gap:8, background:'var(--dark)', border:'1px solid var(--dline)', borderRadius:14, padding:8 }}>
           {TOOLS.map(tool => (
-            <button
-              key={tool.id}
-              className={`ibtn d${activeTool === tool.id ? ' on' : ''}`}
-              onClick={() => { setActiveTool(tool.id); toast({ title: `${tool.label} tool` }); }}
-              aria-label={tool.label}
-              title={tool.label}
+            <button key={tool.id}
+              className={`ibtn d${activeTool===tool.id?' on':''}`}
+              onClick={() => { setActiveTool(tool.id); toast({ title:`${tool.label} tool` }); }}
+              aria-label={tool.label} title={tool.label}
             >
               <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
                 <path d={tool.icon}/>
@@ -164,208 +165,205 @@ export function EditorView() {
           ))}
         </div>
 
-        {/* Canvas */}
+        {/* ── Canvas ── */}
         <div
-          style={{
-            background: 'var(--dark)', border: '1px solid var(--dline)',
-            borderRadius: 'var(--r2)', minHeight: 520,
-            display: 'grid', placeItems: 'center',
-            padding: 26, overflow: 'hidden', position: 'relative',
-            backgroundImage: 'linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px)',
-            backgroundSize: '34px 34px',
-          }}
-          onDragOver={e => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
+          onDragOver={e=>{ e.preventDefault(); setDragging(true); }}
+          onDragLeave={()=>setDragging(false)}
           onDrop={handleDrop}
+          style={{
+            background:'var(--dark)', border:`1px solid ${dragging?'var(--acc)':'var(--dline)'}`,
+            borderRadius:'var(--r2)', minHeight:520,
+            display:'grid', placeItems:'center',
+            padding:26, overflow:'hidden', position:'relative',
+            backgroundImage:'linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px)',
+            backgroundSize:'34px 34px', transition:'border-color .2s',
+          }}
         >
+          {/* Loading spinner */}
           {isLoading && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, color: 'var(--dtext)' }}>
-              <div style={{
-                width: 48, height: 48, borderRadius: '50%',
-                border: '2px solid transparent', borderTopColor: 'var(--acc)', borderRightColor: 'var(--acc)',
-                animation: 'spin 1s linear infinite',
-              }} />
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
+              <div style={{ width:48,height:48,borderRadius:'50%',border:'2px solid transparent',borderTopColor:'var(--acc)',borderRightColor:'var(--acc)',animation:'spin 1s linear infinite' }} />
               <span className="mic d">PROCESSING EDIT…</span>
             </div>
           )}
 
+          {/* Empty state — upload prompt */}
           {!isLoading && !displayImg && (
             <div
               onClick={() => fileInputRef.current?.click()}
               style={{
-                border: `1px dashed ${dragging ? 'var(--acc)' : 'var(--dline)'}`,
-                borderRadius: 16, padding: '56px 30px',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
-                cursor: 'pointer', transition: '.2s', maxWidth: 440, textAlign: 'center',
+                border:`1px dashed ${dragging?'var(--acc)':'var(--dline)'}`,
+                borderRadius:16, padding:'56px 30px',
+                display:'flex', flexDirection:'column', alignItems:'center', gap:14,
+                cursor:'pointer', maxWidth:440, textAlign:'center', transition:'.2s',
               }}
             >
               <svg style={{ width:34,height:34,fill:'none',stroke:'var(--acc)',strokeWidth:1.8 }} viewBox="0 0 24 24">
                 <path d="M12 21V9M7 14l5-5 5 5M4 3h16"/>
               </svg>
-              <h4 style={{ fontSize: 17, fontWeight: 500, color: 'var(--dtext)' }}>Drop an image here</h4>
-              <p style={{ color: 'var(--dmut)', fontSize: 13.5 }}>or click to upload — PNG, JPG, WEBP supported</p>
-              <button className="btn dark sm">Choose file</button>
+              <h4 style={{ fontSize:17, fontWeight:500, color:'var(--dtext)' }}>Drop an image here</h4>
+              <p style={{ color:'var(--dmut)', fontSize:13.5 }}>or click to upload — PNG, JPG, WEBP supported</p>
+              <button className="btn dark sm" type="button">Choose file</button>
             </div>
           )}
 
+          {/* Image display */}
           {!isLoading && displayImg && (
-            <img
-              src={displayImg}
-              alt="Canvas"
-              onClick={() => setLbOpen(true)}
-              style={{
-                maxHeight: '58vh', borderRadius: 8,
-                boxShadow: '0 24px 70px rgba(0,0,0,.55)',
-                transform: `scale(${zoom / 100})`,
-                filter: imgFilter,
-                transition: 'transform .25s, filter .25s',
-                cursor: 'zoom-in',
-                position: 'relative',
-              }}
-            />
+            <>
+              <img
+                src={displayImg} alt="Canvas"
+                onClick={() => setLbOpen(true)}
+                style={{
+                  maxHeight:'58vh', borderRadius:8,
+                  boxShadow:'0 24px 70px rgba(0,0,0,.55)',
+                  transform:`scale(${zoom/100})`,
+                  filter:imgFilter,
+                  transition:'transform .25s, filter .25s',
+                  cursor:'zoom-in', position:'relative',
+                }}
+              />
+              {/* Re-upload button overlay */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  position:'absolute', bottom:14, left:'50%', translate:'-50% 0',
+                  background:'rgba(20,19,16,.7)', border:'1px solid var(--dline)',
+                  color:'var(--dmut)', borderRadius:10, padding:'6px 14px',
+                  fontFamily:'var(--mono)', fontSize:11, cursor:'pointer',
+                  backdropFilter:'blur(6px)', letterSpacing:'.08em',
+                }}
+              >
+                CHANGE IMAGE
+              </button>
+            </>
           )}
 
-          <input
-            ref={fileInputRef}
-            type="file" accept="image/*" className="hidden"
-            onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])}
-          />
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+            onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
         </div>
 
-        {/* Adjust panel (desktop) */}
-        <div className="ie-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* ── Right panel: Prompt + Adjustments ── */}
+        <div className="ie-card" style={{ padding:18, display:'flex', flexDirection:'column', gap:16 }}>
 
-          <span className="mic">Adjustments</span>
+          {/* ── Edit prompt (always visible) ── */}
+          <div style={{ display:'grid', gap:8 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <span className="mic">Edit Prompt</span>
+              {!uploaded && <span className="mic" style={{ color:'var(--err)' }}>upload image first</span>}
+            </div>
+            <textarea
+              className="ie-inp"
+              value={prompt}
+              onChange={e=>setPrompt(e.target.value)}
+              placeholder="Describe what to change… e.g. &quot;add a sunset sky background&quot;, &quot;remove the background&quot;"
+              style={{ minHeight:96 }}
+            />
 
-          {/* Edit prompt */}
-          {uploaded && (
-            <div style={{ display: 'grid', gap: 8 }}>
-              <label style={{ fontSize: 13, fontWeight: 500 }}>Edit Prompt</label>
-              <textarea
-                className="ie-inp"
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                placeholder="Describe the edit…"
-                style={{ minHeight: 72 }}
-              />
-              <button
-                className="btn acc"
-                disabled={!prompt.trim() || isLoading || (!isAdmin && credits < editCost)}
-                onClick={handleEdit}
-                style={{ width: '100%' }}
-              >
-                <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-                  <path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M13 6l3 3"/>
-                </svg>
-                {isLoading ? 'Editing…' : 'Apply Edit'}
+            {/* Upload image button (shown when no image yet) */}
+            {!uploaded && (
+              <button className="btn ghost sm" type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{ width:'100%' }}>
+                <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 21V9M7 14l5-5 5 5M4 3h16"/></svg>
+                Upload Image
               </button>
-            </div>
-          )}
+            )}
 
-          {/* Sliders */}
-          {[
-            { label: 'EXPOSURE',    val: exp, set: setExp },
-            { label: 'CONTRAST',    val: con, set: setCon },
-            { label: 'SATURATION',  val: sat, set: setSat },
-            { label: 'TEMPERATURE', val: tmp, set: setTmp },
-          ].map(({ label, val, set }) => (
-            <div key={label} style={{ display: 'grid', gap: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="mic">{label}</span>
-                <span className="mic">{val}</span>
-              </div>
-              <input
-                type="range" min="-100" max="100" value={val}
-                onChange={e => set(+e.target.value)}
-                style={{ width: '100%', accentColor: 'var(--acc)' }}
-              />
-            </div>
-          ))}
+            {/* Apply Edit button */}
+            <button
+              className="btn acc"
+              disabled={!uploaded || !prompt.trim() || isLoading || (!isAdmin && credits < editCost)}
+              onClick={handleEdit}
+              style={{ width:'100%', padding:13, fontSize:15, fontWeight:700 }}
+            >
+              {isLoading
+                ? <><div style={{ width:16,height:16,borderRadius:'50%',border:'2px solid rgba(255,255,255,.3)',borderTopColor:'#fff',animation:'spin 1s linear infinite' }} />Editing…</>
+                : <>
+                    <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M13 6l3 3"/></svg>
+                    Apply Edit
+                    {editCost > 0 && !isAdmin && <span style={{ fontSize:11, opacity:.75, marginLeft:4 }}>({editCost} cr)</span>}
+                  </>
+              }
+            </button>
 
-          {/* Filters */}
-          <div>
-            <span className="mic" style={{ display: 'block', marginBottom: 8 }}>Filters</span>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {FILTERS.map(f => (
-                <button
-                  key={f}
-                  className={`chip${activeFilter === f ? ' on' : ''}`}
-                  onClick={() => { setActiveFilter(f); toast({ title: `${f} filter` }); }}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
+            {/* Re-edit button */}
+            {result && (
+              <button className="btn ghost sm" type="button" onClick={() => { setUploaded(result); setResult(null); setPrompt(''); }}
+                style={{ width:'100%' }}>
+                <svg style={{ width:14,height:14,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M21 3v6h-6"/><path d="M20.5 9A8.5 8.5 0 1 0 21 12"/></svg>
+                Re-edit result
+              </button>
+            )}
           </div>
 
-          {/* Upscale */}
-          <button
-            className="btn acc"
-            onClick={() => toast({ title: 'AI Upscale running — ×2' })}
-            style={{ width: '100%' }}
-          >
-            <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-              <path d="M13 2 4 14h6l-1 8 9-12h-6z"/>
-            </svg>
-            AI Upscale ×2
-          </button>
+          <div style={{ borderTop:'1px dashed var(--line2)', paddingTop:14, display:'grid', gap:16 }}>
+            <span className="mic">Adjustments</span>
+
+            {/* Sliders */}
+            {[
+              { label:'EXPOSURE',    val:exp, set:setExp },
+              { label:'CONTRAST',    val:con, set:setCon },
+              { label:'SATURATION',  val:sat, set:setSat },
+              { label:'TEMPERATURE', val:tmp, set:setTmp },
+            ].map(({ label, val, set }) => (
+              <div key={label} style={{ display:'grid', gap:6 }}>
+                <div style={{ display:'flex', justifyContent:'space-between' }}>
+                  <span className="mic">{label}</span>
+                  <span className="mic">{val}</span>
+                </div>
+                <input type="range" min="-100" max="100" value={val}
+                  onChange={e=>set(+e.target.value)}
+                  style={{ width:'100%', accentColor:'var(--acc)' }} />
+              </div>
+            ))}
+
+            {/* Filters */}
+            <div>
+              <span className="mic" style={{ display:'block', marginBottom:8 }}>Filters</span>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {FILTERS.map(f => (
+                  <button key={f} className={`chip${activeFilter===f?' on':''}`}
+                    onClick={() => { setActiveFilter(f); toast({ title:`${f} filter applied` }); }}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Upscale */}
+            <button className="btn acc" onClick={() => toast({ title:'AI Upscale running — ×2' })} style={{ width:'100%' }}>
+              <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+              AI Upscale ×2
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Mobile adjust fab */}
-      <button
-        className="btn acc"
-        onClick={() => setAdjustOpen(true)}
-        style={{
-          position: 'fixed', right: 16, bottom: 86, zIndex: 70,
-          boxShadow: '0 12px 30px rgba(255,77,31,.4)',
-          display: 'none',
-        }}
-        id="adjustFab"
-      >
-        <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-          <path d="M4 8h10M18 8h2M16 6v4M4 16h2M10 16h10M8 14v4"/>
-        </svg>
-        Adjust
-      </button>
-
-      {/* Lightbox */}
+      {/* ── Lightbox ── */}
       <AnimatePresence>
         {lbOpen && displayImg && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
             onClick={() => setLbOpen(false)}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 110,
-              background: 'rgba(20,19,16,.9)', backdropFilter: 'blur(4px)',
-              display: 'grid', placeItems: 'center', padding: 18,
-            }}
-          >
-            <button className="ibtn d" onClick={() => setLbOpen(false)}
-              style={{ position: 'absolute', top: 14, right: 14 }}>
-              <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-                <path d="M6 6l12 12M18 6 6 18"/>
-              </svg>
+            style={{ position:'fixed', inset:0, zIndex:110, background:'rgba(20,19,16,.9)', backdropFilter:'blur(4px)', display:'grid', placeItems:'center', padding:18 }}>
+            <button className="ibtn d" onClick={()=>setLbOpen(false)} style={{ position:'absolute', top:14, right:14 }}>
+              <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
             </button>
-            <motion.img
-              initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.92, opacity: 0 }}
-              src={displayImg} alt="Preview"
-              onClick={e => e.stopPropagation()}
-              style={{ maxHeight: '80vh', maxWidth: '90vw', borderRadius: 12, objectFit: 'contain' }}
-            />
+            <motion.img initial={{ scale:.92,opacity:0 }} animate={{ scale:1,opacity:1 }} exit={{ scale:.92,opacity:0 }}
+              src={displayImg} alt="Preview" onClick={e=>e.stopPropagation()}
+              style={{ maxHeight:'80vh', maxWidth:'90vw', borderRadius:12, objectFit:'contain', boxShadow:'0 40px 100px rgba(0,0,0,.6)' }} />
           </motion.div>
         )}
       </AnimatePresence>
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 1080px) {
+        @media(max-width:1080px) {
           .ed-layout { grid-template-columns: 56px 1fr !important; }
-          #adjustFab { display: inline-flex !important; }
+          .ed-layout > .ie-card { display: none; }
         }
-        @media (max-width: 640px) {
+        @media(max-width:640px) {
           .ed-layout { grid-template-columns: 1fr !important; }
+          .ed-layout > div:first-child { flex-direction: row; overflow-x: auto; }
         }
       `}</style>
     </div>
