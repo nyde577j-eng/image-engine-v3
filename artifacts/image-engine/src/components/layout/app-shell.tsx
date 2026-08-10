@@ -1,4 +1,4 @@
-import { AppProvider, useApp } from '@/components/providers/app-provider';
+import { AppProvider } from '@/components/providers/app-provider';
 import { AdminAuthProvider } from '@/components/providers/admin-auth-provider';
 import { Rail } from './rail';
 import { TopBar } from './topbar';
@@ -7,29 +7,57 @@ import { CommandPalette } from '@/components/ui/command-palette';
 import { MobileBottomBar } from './mobile-bottom-bar';
 
 function ShellContent() {
-  const { activeView } = useApp();
-
   return (
-    <div
-      style={{ display: 'grid', gridTemplateColumns: '68px 1fr', minHeight: '100vh', position: 'relative', zIndex: 1 }}
-    >
-      {/* ── Rail (desktop) ── */}
-      <Rail />
+    <>
+      {/* ── Global layout styles ── */}
+      <style>{`
+        /* Reset any overflow that breaks mobile */
+        html, body, #root { overflow-x: hidden; }
 
-      {/* ── Main column ── */}
-      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <TopBar />
-        <main style={{ flex: 1, overflow: 'hidden' }}>
-          <ViewRouter />
-        </main>
+        /* App shell: rail + main */
+        .app-shell {
+          display: grid;
+          grid-template-columns: 68px 1fr;
+          min-height: 100vh;
+          min-height: 100dvh;
+          position: relative;
+          z-index: 1;
+        }
+
+        /* On mobile: single column, rail hidden */
+        @media (max-width: 899px) {
+          .app-shell {
+            grid-template-columns: 1fr;
+          }
+          /* extra bottom padding so content clears the bottom nav */
+          .app-main-content {
+            padding-bottom: env(safe-area-inset-bottom);
+          }
+        }
+      `}</style>
+
+      <div className="app-shell">
+        {/* Rail — hidden on mobile via its own CSS */}
+        <Rail />
+
+        {/* Main column */}
+        <div
+          className="app-main-content"
+          style={{ minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        >
+          <TopBar />
+          <main style={{ flex: 1 }}>
+            <ViewRouter />
+          </main>
+        </div>
       </div>
 
-      {/* ── Mobile bottom bar ── */}
+      {/* Mobile bottom bar — renders outside grid so it's always on top */}
       <MobileBottomBar />
 
-      {/* ── Command Palette (global) ── */}
+      {/* Command Palette — portal-like, always on top */}
       <CommandPalette />
-    </div>
+    </>
   );
 }
 
