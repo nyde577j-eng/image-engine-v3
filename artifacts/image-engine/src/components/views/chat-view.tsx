@@ -239,22 +239,22 @@ export function ChatView() {
   const fetchSessions = useCallback(async () => {
     setSessionsLoading(true);
     try {
-      const r = await fetch(`/api/chat/sessions?user_key=${encodeURIComponent(getUserKey())}`);
+      const userKey = getUserKey();
+      const r = await fetch(`/api/chat/sessions?user_key=${encodeURIComponent(userKey)}`);
       const d = await r.json() as { ok: boolean; sessions?: ChatSession[] };
-      if (d.ok && d.sessions) {
-        // Filter by user_key locally if backend returned all sessions
-        const userKey = getUserKey();
-        const filtered = d.sessions.filter(s =>
-          !(s as any).user_key || (s as any).user_key === userKey
-        );
-        setSessions(filtered.length > 0 ? filtered : d.sessions.slice(0, 20));
+
+      if (d.ok && d.sessions && d.sessions.length > 0) {
+        // Backend returned sessions filtered by user_key — use them
+        // Also sync to localStorage cache
+        localStorage.setItem('ie_chat_sessions', JSON.stringify(d.sessions.slice(0, 50)));
+        setSessions(d.sessions);
       } else {
-        // Fallback: load from localStorage cache
+        // Backend returned empty (column may not exist yet) — use localStorage cache
         const cached = JSON.parse(localStorage.getItem('ie_chat_sessions') ?? '[]') as ChatSession[];
         setSessions(cached);
       }
     } catch {
-      // Offline fallback
+      // Network error — use localStorage cache
       const cached = JSON.parse(localStorage.getItem('ie_chat_sessions') ?? '[]') as ChatSession[];
       setSessions(cached);
     } finally { setSessionsLoading(false); }
@@ -299,8 +299,13 @@ export function ChatView() {
   };
 
   const deleteSession = async (id: string) => {
-    try { await fetch(`/api/chat/sessions/${id}`, { method:'DELETE' }); setSessions(p => p.filter(s => s.id !== id)); }
-    catch { toast({ title:'Error deleting session', variant:'destructive' }); }
+    try {
+      await fetch(`/api/chat/sessions/${id}`, { method:'DELETE' });
+    } catch { /* silent */ }
+    // Always remove from localStorage cache
+    const cached = JSON.parse(localStorage.getItem('ie_chat_sessions') ?? '[]') as ChatSession[];
+    localStorage.setItem('ie_chat_sessions', JSON.stringify(cached.filter(s => s.id !== id)));
+    setSessions(p => p.filter(s => s.id !== id));
   };
 
   /* Handle file attachments */

@@ -172,27 +172,30 @@ async function supabaseFetch(path: string, options: RequestInit = {}) {
 }
 
 /**
- * GET /api/chat/sessions — جلب الجلسات مع فلترة بـ user_key للخصوصية
+ * GET /api/chat/sessions — جلب الجلسات مع فلترة إلزامية بـ user_key
+ * لو user_key مش موجود أو الـ column مش موجود → رجّع array فاضي (خصوصية تامة)
  */
 router.get("/chat/sessions", async (req, res) => {
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.json({ ok: true, sessions: [] });
-  try {
-    const userKey = (req.query['user_key'] as string | undefined)?.trim();
-    // Try filtering by user_key first; if column doesn't exist, fall back to all sessions
-    let r = userKey
-      ? await supabaseFetch(`/chat_sessions?select=id,title,created_at,updated_at&user_key=eq.${encodeURIComponent(userKey)}&order=updated_at.desc`)
-      : await supabaseFetch(`/chat_sessions?select=id,title,created_at,updated_at&order=updated_at.desc`);
+  const userKey = (req.query['user_key'] as string | undefined)?.trim();
 
-    // If user_key filter fails (column missing), retry without filter
-    if (!r.ok && userKey) {
-      r = await supabaseFetch(`/chat_sessions?select=id,title,created_at,updated_at&order=updated_at.desc`);
+  // لو مفيش user_key → مش نرجع أي جلسات (خصوصية)
+  if (!userKey) return res.json({ ok: true, sessions: [] });
+
+  try {
+    const r = await supabaseFetch(
+      `/chat_sessions?select=id,title,created_at,updated_at&user_key=eq.${encodeURIComponent(userKey)}&order=updated_at.desc`
+    );
+
+    if (!r.ok) {
+      // Column missing or other error → return empty (NEVER return other users' data)
+      return res.json({ ok: true, sessions: [] });
     }
 
-    if (!r.ok) throw new Error(`Supabase error ${r.status}`);
     const data = await r.json();
-    return res.json({ ok: true, sessions: data });
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: String(err) });
+    return res.json({ ok: true, sessions: Array.isArray(data) ? data : [] });
+  } catch {
+    return res.json({ ok: true, sessions: [] });
   }
 });
 

@@ -45,24 +45,35 @@ const QC: Record<string, { bg: string; color: string }> = {
 function DownloadModal({ video, onClose }: { video: PageVideo; onClose: () => void }) {
   return (
     <>
-      <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(20,19,16,.6)',backdropFilter:'blur(4px)' }} />
-      <motion.div initial={{ opacity:0, y:30 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:30 }}
+      {/* Scrim */}
+      <div onClick={onClose} style={{
+        position:'fixed', inset:0, zIndex:500,
+        background:'rgba(20,19,16,.65)', backdropFilter:'blur(4px)'
+      }} />
+
+      {/* Sheet — positioned above bottom bar using calc */}
+      <motion.div
+        initial={{ opacity:0, y:'100%' }}
+        animate={{ opacity:1, y:0 }}
+        exit={{ opacity:0, y:'100%' }}
+        transition={{ type:'spring', stiffness:360, damping:32 }}
         style={{
           position:'fixed',
-          bottom:0, left:'50%', translate:'-50% 0',
-          zIndex:201,
-          width:'min(480px,100vw)',
+          /* On mobile: sit above the ~62px bottom bar */
+          bottom:'calc(env(safe-area-inset-bottom, 0px))',
+          left:0, right:0,
+          zIndex:501,
           background:'var(--card)',
           borderRadius:'22px 22px 0 0',
           border:'1px solid var(--line)',
-          boxShadow:'0 -20px 60px rgba(0,0,0,.25)',
-          overflow:'hidden',
-          /* Safe area for phones with home bar */
-          paddingBottom:'env(safe-area-inset-bottom)',
-          /* Make it scroll if content too tall */
-          maxHeight:'85vh',
+          boxShadow:'0 -24px 60px rgba(0,0,0,.3)',
+          maxHeight:'80vh',
           overflowY:'auto',
-        }}>
+          /* Extra padding at bottom so content clears mobile nav */
+          paddingBottom:'calc(env(safe-area-inset-bottom, 0px) + 72px)',
+        }}
+        className="vid-modal"
+      >
 
         {/* Grab */}
         <div style={{ width:44,height:5,borderRadius:99,background:'var(--line2)',margin:'12px auto 0' }} />
@@ -368,7 +379,25 @@ export function VideosView() {
         @keyframes spin  { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
         @media(max-width:480px){ .vid-grid{ grid-template-columns:1fr; } }
+
+        .vid-modal { width: 100% !important; }
+        @media (min-width: 640px) {
+          .vid-modal {
+            left: 50% !important;
+            right: auto !important;
+            width: min(480px, 100vw) !important;
+            transform: translateX(-50%);
+            padding-bottom: 0 !important;
+            border-radius: 22px !important;
+            bottom: 20px !important;
+          }
+        }
+        @media (max-width: 899px) {
+          .vid-modal { padding-bottom: 76px !important; }
+        }
       `}</style>
     </div>
   );
 }
+
+// Re-export nothing — this file is complete
