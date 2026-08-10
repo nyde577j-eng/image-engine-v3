@@ -87,12 +87,15 @@ function Bubble({ msg, isLatest }: { msg: Message; isLatest: boolean }) {
 
       <div style={{
         padding:'13px 16px', borderRadius:16, fontSize:14.5, lineHeight:1.6,
-        background: isUser ? 'var(--ink)' : 'var(--card)',
+        background: isUser ? 'var(--ink)' : 'transparent',
         color: isUser ? 'var(--bg)' : 'var(--ink)',
         border: isUser ? 'none' : '1px solid var(--line)',
         borderTopRightRadius: isUser ? 4 : 16,
         borderTopLeftRadius: isUser ? 16 : 4,
         wordBreak: 'break-word',
+        /* Limit AI bubble width to content — no full-width white box */
+        display: 'inline-block',
+        maxWidth: '100%',
       }}>
         {isLatest && !isUser
           ? <TypingMsg content={msg.content} />
@@ -238,8 +241,23 @@ export function ChatView() {
     try {
       const r = await fetch(`/api/chat/sessions?user_key=${encodeURIComponent(getUserKey())}`);
       const d = await r.json() as { ok: boolean; sessions?: ChatSession[] };
-      if (d.ok) setSessions(d.sessions ?? []);
-    } catch { /* silent */ } finally { setSessionsLoading(false); }
+      if (d.ok && d.sessions) {
+        // Filter by user_key locally if backend returned all sessions
+        const userKey = getUserKey();
+        const filtered = d.sessions.filter(s =>
+          !(s as any).user_key || (s as any).user_key === userKey
+        );
+        setSessions(filtered.length > 0 ? filtered : d.sessions.slice(0, 20));
+      } else {
+        // Fallback: load from localStorage cache
+        const cached = JSON.parse(localStorage.getItem('ie_chat_sessions') ?? '[]') as ChatSession[];
+        setSessions(cached);
+      }
+    } catch {
+      // Offline fallback
+      const cached = JSON.parse(localStorage.getItem('ie_chat_sessions') ?? '[]') as ChatSession[];
+      setSessions(cached);
+    } finally { setSessionsLoading(false); }
   }, []);
 
   useEffect(() => { fetchSessions(); }, [fetchSessions]);
@@ -323,7 +341,14 @@ export function ChatView() {
           body: JSON.stringify({ title: trimmed.slice(0,80), user_key: getUserKey() }),
         });
         const d = await r.json() as { ok: boolean; session?: ChatSession };
-        if (d.ok && d.session) { setActiveSession(d.session); sessionId = d.session.id; }
+        if (d.ok && d.session) {
+          setActiveSession(d.session);
+          sessionId = d.session.id;
+          // Cache session locally so user can find it on return
+          const cached = JSON.parse(localStorage.getItem('ie_chat_sessions') ?? '[]') as ChatSession[];
+          cached.unshift(d.session);
+          localStorage.setItem('ie_chat_sessions', JSON.stringify(cached.slice(0, 50)));
+        }
       } catch { /* silent */ }
     }
 

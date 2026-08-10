@@ -178,10 +178,16 @@ router.get("/chat/sessions", async (req, res) => {
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.json({ ok: true, sessions: [] });
   try {
     const userKey = (req.query['user_key'] as string | undefined)?.trim();
-    const filter = userKey
-      ? `/chat_sessions?select=id,title,created_at,updated_at&user_key=eq.${encodeURIComponent(userKey)}&order=updated_at.desc`
-      : `/chat_sessions?select=id,title,created_at,updated_at&order=updated_at.desc`;
-    const r = await supabaseFetch(filter);
+    // Try filtering by user_key first; if column doesn't exist, fall back to all sessions
+    let r = userKey
+      ? await supabaseFetch(`/chat_sessions?select=id,title,created_at,updated_at&user_key=eq.${encodeURIComponent(userKey)}&order=updated_at.desc`)
+      : await supabaseFetch(`/chat_sessions?select=id,title,created_at,updated_at&order=updated_at.desc`);
+
+    // If user_key filter fails (column missing), retry without filter
+    if (!r.ok && userKey) {
+      r = await supabaseFetch(`/chat_sessions?select=id,title,created_at,updated_at&order=updated_at.desc`);
+    }
+
     if (!r.ok) throw new Error(`Supabase error ${r.status}`);
     const data = await r.json();
     return res.json({ ok: true, sessions: data });
@@ -198,13 +204,23 @@ router.post("/chat/sessions", async (req, res) => {
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ ok: false, error: "Supabase not configured" });
   const { title, user_key } = req.body as { title?: string; user_key?: string };
   try {
-    const r = await supabaseFetch("/chat_sessions", {
+    // Try with user_key first, fallback without it if column doesn't exist
+    const payload: Record<string, string> = { title: title?.trim() || "New chat" };
+    if (user_key) payload.user_key = user_key;
+
+    let r = await supabaseFetch("/chat_sessions", {
       method: "POST",
-      body: JSON.stringify({
-        title: title?.trim() || "New chat",
-        ...(user_key ? { user_key } : {}),
-      }),
+      body: JSON.stringify(payload),
     });
+
+    // If failed (column may not exist), retry without user_key
+    if (!r.ok && user_key) {
+      r = await supabaseFetch("/chat_sessions", {
+        method: "POST",
+        body: JSON.stringify({ title: payload.title }),
+      });
+    }
+
     if (!r.ok) throw new Error(`Supabase error ${r.status}`);
     const data = await r.json();
     const session = Array.isArray(data) ? data[0] : data;
