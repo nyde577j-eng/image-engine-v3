@@ -676,7 +676,17 @@ body {
   }
 }
 
-/* ── Admin login page: hide dot-grid behind login form ── */
+/* ── Admin login page: hide dot-grid (login has its own animated bg) ── */
 body:has(.admin-login-bg)::before {
+  display: none !important;
+}
+/* Login page fills full screen including the app shell */
+body:has(.admin-login-bg) .app-shell {
+  display: block !important;
+  grid-template-columns: 1fr !important;
+}
+body:has(.admin-login-bg) .rail-sidebar,
+body:has(.admin-login-bg) .topbar,
+body:has(.admin-login-bg) .mobile-bbar {
   display: none !important;
 }

@@ -43,9 +43,41 @@ export function AdminLoginPage() {
   const hasError = !!error;
 
   return (
-    <div className="admin-login-bg relative flex min-h-screen items-center justify-center overflow-hidden p-4"
-      style={{ background: 'var(--bg)' }}>
-      {/* Clean background — no grid */}
+    <div className="admin-login-bg relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+
+      {/* ── Animated background ── */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 0,
+        background: 'linear-gradient(135deg, #0f0e0c 0%, #1c1a14 50%, #0f0e0c 100%)',
+      }} />
+
+      {/* Floating orbs animation */}
+      {[
+        { w:400, h:400, top:'10%', left:'5%',  color:'rgba(255,77,31,.12)', delay:0, dur:8 },
+        { w:300, h:300, top:'60%', left:'70%', color:'rgba(255,77,31,.08)', delay:2, dur:10 },
+        { w:250, h:250, top:'30%', left:'55%', color:'rgba(255,120,50,.06)', delay:4, dur:7 },
+        { w:200, h:200, top:'70%', left:'20%', color:'rgba(255,77,31,.07)', delay:1, dur:9 },
+      ].map((orb, i) => (
+        <motion.div key={i}
+          style={{
+            position: 'absolute', zIndex: 0,
+            width: orb.w, height: orb.h,
+            top: orb.top, left: orb.left,
+            borderRadius: '50%',
+            background: `radial-gradient(circle, ${orb.color}, transparent 70%)`,
+            filter: 'blur(40px)',
+          }}
+          animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6], y: [0, -30, 0] }}
+          transition={{ duration: orb.dur, delay: orb.delay, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      ))}
+
+      {/* Subtle grid lines */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 0,
+        backgroundImage: 'linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px)',
+        backgroundSize: '40px 40px',
+      }} />
 
       {/* ── Unauthorized Modal ── */}
       <AnimatePresence>
@@ -125,6 +157,7 @@ export function AdminLoginPage() {
         variants={shakeVariants}
         animate={shakeKey > 0 ? 'shake' : 'idle'}
         className="relative w-full max-w-md"
+        style={{ zIndex: 1 }}
       >
         <motion.div
           initial={{ opacity: 0, y: 24, scale: 0.97 }}
