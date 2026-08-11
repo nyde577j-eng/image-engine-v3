@@ -195,10 +195,10 @@ export function AdminLoginPage() {
                 }
               </motion.div>
               <div>
-                <h1 className="font-display text-xl font-bold tracking-tight">
+                <h1 className="font-display text-xl font-bold tracking-tight" style={{ color: 'var(--ink)' }}>
                   Admin Access
                 </h1>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs" style={{ color: 'var(--mut)' }}>
                   Engine Control Center — restricted area
                 </p>
               </div>
@@ -206,10 +206,10 @@ export function AdminLoginPage() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4 px-8 py-6">
+          <form onSubmit={handleSubmit} className="space-y-4 px-8 py-6" style={{ background: 'var(--card)' }}>
             {/* Username */}
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--mut)' }}>
                 Username
               </label>
               <motion.input
@@ -225,12 +225,13 @@ export function AdminLoginPage() {
                     ? 'border-destructive/50 focus:border-destructive/60 focus:ring-destructive/20'
                     : 'border-border focus:border-primary/60 focus:ring-primary/20',
                 )}
+                style={{ color: 'var(--ink)', background: 'var(--panel)' }}
               />
             </div>
 
             {/* Password */}
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--mut)' }}>
                 Password
               </label>
               <div className="relative">
@@ -247,6 +248,7 @@ export function AdminLoginPage() {
                       ? 'border-destructive/50 focus:border-destructive/60 focus:ring-destructive/20'
                       : 'border-border focus:border-primary/60 focus:ring-primary/20',
                   )}
+                  style={{ color: 'var(--ink)', background: 'var(--panel)' }}
                 />
                 <button
                   type="button"
@@ -297,9 +299,8 @@ export function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Footer */}
           <div className="border-t border-border px-8 py-4">
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-xs" style={{ color: 'var(--mut)' }}>
               Unauthorized access is prohibited and monitored.
             </p>
           </div>
