@@ -675,3 +675,8 @@ body {
     padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
   }
 }
+
+/* ── Admin login page: hide dot-grid behind login form ── */
+body:has(.admin-login-bg)::before {
+  display: none !important;
+}

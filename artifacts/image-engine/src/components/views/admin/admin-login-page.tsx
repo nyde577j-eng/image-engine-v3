@@ -43,16 +43,9 @@ export function AdminLoginPage() {
   const hasError = !!error;
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
-      {/* Background */}
-      <div className="pointer-events-none absolute inset-0 bg-grid opacity-30" />
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 80% 50% at 50% 0%, hsl(43 96% 56% / 0.12), transparent 70%)',
-        }}
-      />
+    <div className="admin-login-bg relative flex min-h-screen items-center justify-center overflow-hidden p-4"
+      style={{ background: 'var(--bg)' }}>
+      {/* Clean background — no grid */}
 
       {/* ── Unauthorized Modal ── */}
       <AnimatePresence>
