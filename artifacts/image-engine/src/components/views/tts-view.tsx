@@ -305,7 +305,9 @@ function VoiceCard({ voice, selected, onSelect, playingPreviewId, onPreviewToggl
 /* ── Clone Section ───────────────────────────────────────────────── */
 function CloneSection({ onAudioReady }: { onAudioReady: (audio: GeneratedAudio) => void }) {
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef   = useRef<HTMLInputElement>(null);
+  const mediaRecRef    = useRef<MediaRecorder | null>(null);
+  const chunksRef      = useRef<Blob[]>([]);
 
   const [cloneText, setCloneText]       = useState('');
   const [cloneFormat, setCloneFormat]   = useState<Fmt>('mp3');
@@ -314,6 +316,44 @@ function CloneSection({ onAudioReady }: { onAudioReady: (audio: GeneratedAudio) 
   const [transcript, setTranscript]     = useState('');
   const [cloning, setCloning]           = useState(false);
   const [dragging, setDragging]         = useState(false);
+
+  /* ── Recording state ── */
+  const [recording, setRecording]       = useState(false);
+  const [recSeconds, setRecSeconds]     = useState(0);
+  const [recPreviewUrl, setRecPreviewUrl] = useState<string | null>(null);
+  const recTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunksRef.current = [];
+      const mr = new MediaRecorder(stream);
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const file = new File([blob], `recording-${Date.now()}.webm`, { type: 'audio/webm' });
+        setCloneFile(file);
+        setRecPreviewUrl(URL.createObjectURL(blob));
+        setRecording(false);
+        if (recTimerRef.current) clearInterval(recTimerRef.current);
+      };
+      mr.start();
+      mediaRecRef.current = mr;
+      setRecSeconds(0);
+      setRecording(true);
+      recTimerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
+    } catch {
+      toast({ title: 'Microphone access denied', variant: 'destructive' });
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecRef.current?.stop();
+    if (recTimerRef.current) clearInterval(recTimerRef.current);
+  };
+
+  const fmtSec = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith('audio/')) {
@@ -429,6 +469,65 @@ function CloneSection({ onAudioReady }: { onAudioReady: (audio: GeneratedAudio) 
             </div>
             <input ref={fileInputRef} type="file" accept="audio/*" style={{ display:'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
+
+            {/* ── Record button ── */}
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <div style={{ flex:1, height:1, background:'var(--line2)' }} />
+              <span style={{ fontFamily:'var(--mono)', fontSize:9.5, color:'var(--mut)', letterSpacing:'.08em' }}>OR RECORD</span>
+              <div style={{ flex:1, height:1, background:'var(--line2)' }} />
+            </div>
+
+            {!recording ? (
+              <button
+                onClick={startRecording}
+                style={{
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  border:'1px solid var(--line2)', borderRadius:12,
+                  padding:'11px 16px', background:'var(--card)',
+                  color:'var(--mut)', cursor:'pointer', transition:'.15s',
+                  fontFamily:'var(--ui)', fontSize:13, width:'100%',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor='var(--acc)'; e.currentTarget.style.color='var(--acc)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor='var(--line2)'; e.currentTarget.style.color='var(--mut)'; }}
+              >
+                <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+                  <rect x="9" y="2" width="6" height="12" rx="3"/>
+                  <path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6"/>
+                </svg>
+                {recPreviewUrl ? 'Re-record' : 'Record from microphone'}
+              </button>
+            ) : (
+              <button
+                onClick={stopRecording}
+                style={{
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  border:'1px solid rgba(211,58,44,.5)', borderRadius:12,
+                  padding:'11px 16px', background:'rgba(211,58,44,.1)',
+                  color:'#d33a2c', cursor:'pointer', transition:'.15s',
+                  fontFamily:'var(--ui)', fontSize:13, width:'100%', animation:'pulse-rec 1.4s infinite',
+                }}
+              >
+                <div style={{ width:10, height:10, borderRadius:'50%', background:'#d33a2c', flexShrink:0 }} />
+                Recording… {fmtSec(recSeconds)}
+                &nbsp;·&nbsp;
+                <b>Stop</b>
+              </button>
+            )}
+
+            {/* recorded preview */}
+            {recPreviewUrl && !recording && (
+              <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', border:'1px solid rgba(255,77,31,.2)', borderRadius:10, background:'rgba(255,77,31,.05)' }}>
+                <svg style={{ width:14,height:14,fill:'none',stroke:'var(--acc)',strokeWidth:1.8,flexShrink:0 }} viewBox="0 0 24 24">
+                  <rect x="9" y="2" width="6" height="12" rx="3"/>
+                  <path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6"/>
+                </svg>
+                <audio src={recPreviewUrl} controls style={{ flex:1, height:28, minWidth:0 }} />
+                <button onClick={() => { setRecPreviewUrl(null); setCloneFile(null); }}
+                  style={{ background:'none', border:0, cursor:'pointer', color:'var(--mut)', flexShrink:0 }}>
+                  <svg style={{ width:13,height:13,fill:'none',stroke:'currentColor',strokeWidth:2 }} viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Transcript (optional) */}
@@ -768,6 +867,7 @@ export function TtsView() {
       <style>{`
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes wv{from{height:18%}to{height:92%}}
+        @keyframes pulse-rec{0%,100%{box-shadow:0 0 0 0 rgba(211,58,44,.3)}50%{box-shadow:0 0 0 6px rgba(211,58,44,0)}}
         @media(max-width:1020px){.tts-layout{grid-template-columns:1fr!important}}
         @media(max-width:480px){.tts-meta{display:none!important}}
       `}</style>
