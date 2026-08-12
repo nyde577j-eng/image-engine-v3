@@ -392,7 +392,11 @@ function CloneSection({ onAudioReady }: { onAudioReady: (audio: GeneratedAudio) 
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` })) as { error?: string };
-        throw new Error(err.error ?? `HTTP ${res.status}`);
+        const msg = err.error ?? '';
+        const friendlyMsg = msg.toLowerCase().includes('reference audio is not valid')
+          ? 'Reference audio is not valid. Please use a clear recording of a single human voice (10–30 seconds, no music or noise).'
+          : msg || `HTTP ${res.status}`;
+        throw new Error(friendlyMsg);
       }
 
       const blob = await res.blob();
