@@ -116,36 +116,189 @@ function AudioCard({ url, name, voice, duration, onDelete }: {
   );
 }
 
-/* ── Voice card for selector ─────────────────────────────────────── */
-function VoiceCard({ voice, selected, onSelect }: { voice: Voice; selected: boolean; onSelect: () => void }) {
-  const [imgErr, setImgErr] = useState(false);
+/* ── Mini preview player (used inside VoiceCard) ─────────────────── */
+function VoicePreview({ audioUrl, onStop }: { audioUrl: string; onStop: () => void }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [dur, setDur] = useState(0);
+
+  /* auto-play when mounted */
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    el.play().then(() => setPlaying(true)).catch(() => {});
+    return () => { el.pause(); };
+  }, []);
+
+  const toggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) { el.pause(); setPlaying(false); }
+    else { el.play(); setPlaying(true); }
+  };
+
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
   return (
-    <button onClick={onSelect}
+    <div
+      onClick={e => e.stopPropagation()}
       style={{
-        border: selected ? '1px solid var(--acc)' : '1px solid var(--line2)',
-        borderRadius:14, padding:12,
-        display:'flex', gap:10, alignItems:'center',
-        background: selected ? 'var(--accsoft)' : 'var(--card)',
-        boxShadow: selected ? '0 0 0 3px rgba(255,77,31,.14)' : 'none',
-        transition:'.15s', textAlign:'left', cursor:'pointer', width:'100%',
-      }}>
-      {/* Avatar */}
-      <div style={{ width:38, height:38, borderRadius:10, background:'var(--dark)', display:'grid', placeItems:'center', flexShrink:0, color:'var(--acc)', overflow:'hidden' }}>
-        {voice.cover_image && !imgErr
-          ? <img src={voice.cover_image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setImgErr(true)} />
-          : <svg style={{ width:18,height:18,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
+        marginTop: 8,
+        padding: '8px 10px',
+        background: 'rgba(255,77,31,.08)',
+        border: '1px solid rgba(255,77,31,.2)',
+        borderRadius: 10,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}
+    >
+      <audio
+        ref={audioRef}
+        src={audioUrl}
+        onTimeUpdate={() => setProgress(audioRef.current?.currentTime ?? 0)}
+        onLoadedMetadata={() => setDur(audioRef.current?.duration ?? 0)}
+        onEnded={() => { setPlaying(false); onStop(); }}
+      />
+
+      {/* Play/Pause */}
+      <button
+        onClick={toggle}
+        style={{
+          width: 28, height: 28, borderRadius: '50%',
+          background: 'var(--acc)', border: 0, color: '#fff',
+          display: 'grid', placeItems: 'center', flexShrink: 0, cursor: 'pointer',
+        }}
+      >
+        {playing
+          ? <svg style={{ width:11,height:11,fill:'currentColor' }} viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          : <svg style={{ width:11,height:11,fill:'currentColor' }} viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         }
-      </div>
-      <div style={{ minWidth:0 }}>
-        <b style={{ fontSize:13.5, display:'block' }}>{voice.title}</b>
-        <span style={{ fontFamily:'var(--mono)', fontSize:10.5, color:'var(--mut)' }}>
-          {voice.languages?.slice(0,2).join(' · ') ?? '—'}
+      </button>
+
+      {/* Progress bar */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div
+          style={{ flex: 1, height: 3, background: 'rgba(255,77,31,.2)', borderRadius: 99, overflow: 'hidden', cursor: 'pointer' }}
+          onClick={e => {
+            e.stopPropagation();
+            if (!audioRef.current || !dur) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * dur;
+          }}
+        >
+          <div style={{ height: '100%', width: `${dur ? (progress / dur) * 100 : 0}%`, background: 'var(--acc)', borderRadius: 99, transition: 'width .1s' }} />
+        </div>
+        <span style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--acc)', flexShrink: 0 }}>
+          {fmt(progress)}/{fmt(dur || 0)}
         </span>
       </div>
-      {selected && (
-        <div style={{ marginLeft:'auto', width:8, height:8, borderRadius:'50%', background:'var(--acc)', flexShrink:0 }} />
+
+      {/* Stop preview */}
+      <button
+        onClick={e => { e.stopPropagation(); audioRef.current?.pause(); onStop(); }}
+        style={{ background: 'none', border: 0, cursor: 'pointer', color: 'var(--mut)', padding: 2, display: 'grid', placeItems: 'center' }}
+        title="Close preview"
+      >
+        <svg style={{ width:12,height:12,fill:'none',stroke:'currentColor',strokeWidth:2 }} viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+  );
+}
+
+/* ── Voice card for selector ─────────────────────────────────────── */
+function VoiceCard({ voice, selected, onSelect, playingPreviewId, onPreviewToggle }: {
+  voice: Voice;
+  selected: boolean;
+  onSelect: () => void;
+  playingPreviewId: string | null;
+  onPreviewToggle: (id: string | null) => void;
+}) {
+  const [imgErr, setImgErr] = useState(false);
+
+  /* pick first available sample audio URL */
+  const sampleUrl = voice.samples?.find(s => s.audio)?.audio ?? null;
+  const isPreviewing = playingPreviewId === voice._id;
+
+  const handlePreviewClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPreviewing) {
+      onPreviewToggle(null);
+    } else {
+      onPreviewToggle(voice._id);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        border: selected ? '1px solid var(--acc)' : '1px solid var(--line2)',
+        borderRadius: 14,
+        padding: 12,
+        background: selected ? 'var(--accsoft)' : 'var(--card)',
+        boxShadow: selected ? '0 0 0 3px rgba(255,77,31,.14)' : 'none',
+        transition: '.15s',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0,
+      }}
+    >
+      {/* Top row — clickable to select */}
+      <button
+        onClick={onSelect}
+        style={{
+          display: 'flex', gap: 10, alignItems: 'center',
+          background: 'none', border: 0, cursor: 'pointer', textAlign: 'left', width: '100%', padding: 0,
+        }}
+      >
+        {/* Avatar */}
+        <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--dark)', display: 'grid', placeItems: 'center', flexShrink: 0, color: 'var(--acc)', overflow: 'hidden' }}>
+          {voice.cover_image && !imgErr
+            ? <img src={voice.cover_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setImgErr(true)} />
+            : <svg style={{ width:18,height:18,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
+          }
+        </div>
+
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <b style={{ fontSize: 13.5, display: 'block' }}>{voice.title}</b>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--mut)' }}>
+            {voice.languages?.slice(0, 2).join(' · ') ?? '—'}
+          </span>
+        </div>
+
+        {/* Selected dot OR Preview button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {sampleUrl && (
+            <button
+              onClick={handlePreviewClick}
+              title={isPreviewing ? 'Stop preview' : 'Preview voice sample'}
+              style={{
+                width: 26, height: 26, borderRadius: '50%',
+                background: isPreviewing ? 'var(--acc)' : 'rgba(255,77,31,.15)',
+                border: '1px solid rgba(255,77,31,.3)',
+                color: isPreviewing ? '#fff' : 'var(--acc)',
+                display: 'grid', placeItems: 'center', cursor: 'pointer',
+                transition: '.15s', flexShrink: 0,
+              }}
+            >
+              {isPreviewing
+                ? <svg style={{ width:10,height:10,fill:'currentColor' }} viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                : <svg style={{ width:10,height:10,fill:'currentColor' }} viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              }
+            </button>
+          )}
+          {selected && (
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--acc)' }} />
+          )}
+        </div>
+      </button>
+
+      {/* Inline preview player */}
+      {isPreviewing && sampleUrl && (
+        <VoicePreview audioUrl={sampleUrl} onStop={() => onPreviewToggle(null)} />
       )}
-    </button>
+    </div>
   );
 }
 
@@ -173,6 +326,7 @@ export function TtsView() {
   const [voicesHasMore, setVoicesHasMore] = useState(false);
   const [voicesLoading, setVoicesLoading] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
   const PAGE_SIZE = 12;
 
   const fetchVoices = useCallback(async (page: number, search: string, lang: string) => {
@@ -283,7 +437,9 @@ export function TtsView() {
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, maxHeight:280, overflowY:'auto', scrollbarWidth:'thin' }}>
                       {voices.map(v => (
                         <VoiceCard key={v._id} voice={v} selected={selectedVoiceId === v._id}
-                          onSelect={() => { setSelectedVoiceId(v._id); setSelectedVoiceName(v.title); setShowLibrary(false); }} />
+                          playingPreviewId={playingPreviewId}
+                          onPreviewToggle={setPlayingPreviewId}
+                          onSelect={() => { setSelectedVoiceId(v._id); setSelectedVoiceName(v.title); setShowLibrary(false); setPlayingPreviewId(null); }} />
                       ))}
                     </div>
                   )}
