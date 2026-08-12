@@ -302,6 +302,239 @@ function VoiceCard({ voice, selected, onSelect, playingPreviewId, onPreviewToggl
   );
 }
 
+/* ── Clone Section ───────────────────────────────────────────────── */
+function CloneSection({ onAudioReady }: { onAudioReady: (audio: GeneratedAudio) => void }) {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [cloneText, setCloneText]       = useState('');
+  const [cloneFormat, setCloneFormat]   = useState<Fmt>('mp3');
+  const [cloneSpeed, setCloneSpeed]     = useState(1);
+  const [cloneFile, setCloneFile]       = useState<File | null>(null);
+  const [transcript, setTranscript]     = useState('');
+  const [cloning, setCloning]           = useState(false);
+  const [dragging, setDragging]         = useState(false);
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith('audio/')) {
+      toast({ title: 'Audio files only', description: 'Upload a WAV, MP3, or M4A file', variant: 'destructive' });
+      return;
+    }
+    setCloneFile(file);
+  };
+
+  const handleClone = async () => {
+    if (!cloneText.trim()) { toast({ title: 'Write something first' }); return; }
+    if (!cloneFile)        { toast({ title: 'Upload a reference audio file first' }); return; }
+
+    setCloning(true);
+    try {
+      /* قراءة الملف كـ base64 */
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = e => resolve((e.target?.result as string).split(',')[1] ?? '');
+        reader.onerror = reject;
+        reader.readAsDataURL(cloneFile);
+      });
+
+      const res = await fetch('/api/tts/clone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: cloneText.trim(),
+          audio_base64: base64,
+          audio_mime: cloneFile.type || 'audio/wav',
+          transcript: transcript.trim(),
+          format: cloneFormat,
+          speed: cloneSpeed,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` })) as { error?: string };
+        throw new Error(err.error ?? `HTTP ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const name = `clone-${cloneText.slice(0, 12).toLowerCase().replace(/\s+/g, '-')}.${cloneFormat}`;
+      const dur  = `0:${Math.max(8, Math.round(cloneText.length / 15)).toString().padStart(2, '0')}`;
+
+      onAudioReady({ id: Date.now().toString(), url, name, voice: `Clone · ${cloneFile.name}`, duration: dur });
+      toast({ title: 'Voice cloned!' });
+    } catch (err) {
+      toast({ title: 'Clone failed', description: String(err), variant: 'destructive' });
+    } finally {
+      setCloning(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 28 }}>
+      {/* Divider */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+        <div style={{ flex:1, height:1, background:'var(--line)' }} />
+        <span style={{ fontFamily:'var(--mono)', fontSize:10.5, letterSpacing:'.1em', color:'var(--mut)' }}>CLONE VOICE</span>
+        <div style={{ flex:1, height:1, background:'var(--line)' }} />
+      </div>
+
+      <div className="tts-layout" style={{ display:'grid', gridTemplateColumns:'380px 1fr', gap:18, alignItems:'start' }}>
+
+        {/* ── Clone Console ── */}
+        <div className="ie-card" style={{ padding:20, display:'flex', flexDirection:'column', gap:18 }}>
+
+          {/* Reference audio upload */}
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <span className="mic">Reference audio</span>
+            <div
+              onDragOver={e => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: `1px dashed ${dragging ? 'var(--acc)' : cloneFile ? 'rgba(255,77,31,.4)' : 'var(--line2)'}`,
+                borderRadius: 12,
+                padding: '14px 16px',
+                background: cloneFile ? 'var(--accsoft)' : dragging ? 'rgba(255,77,31,.05)' : 'transparent',
+                cursor: 'pointer', transition: '.2s',
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}
+            >
+              <svg style={{ width:20,height:20,fill:'none',stroke: cloneFile ? 'var(--acc)' : 'var(--mut)',strokeWidth:1.8,flexShrink:0 }} viewBox="0 0 24 24">
+                <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/>
+              </svg>
+              <div style={{ minWidth:0 }}>
+                {cloneFile ? (
+                  <>
+                    <b style={{ display:'block', fontSize:13, color:'var(--acc)' }}>{cloneFile.name}</b>
+                    <span style={{ fontFamily:'var(--mono)', fontSize:10.5, color:'var(--mut)' }}>
+                      {(cloneFile.size / 1024).toFixed(0)} KB · click to change
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <b style={{ display:'block', fontSize:13 }}>Drop audio file here</b>
+                    <span style={{ fontFamily:'var(--mono)', fontSize:10.5, color:'var(--mut)' }}>WAV, MP3, M4A · 10-30 seconds ideal</span>
+                  </>
+                )}
+              </div>
+              {cloneFile && (
+                <button
+                  onClick={e => { e.stopPropagation(); setCloneFile(null); }}
+                  style={{ marginLeft:'auto', background:'none', border:0, cursor:'pointer', color:'var(--mut)', flexShrink:0 }}
+                >
+                  <svg style={{ width:14,height:14,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                </button>
+              )}
+            </div>
+            <input ref={fileInputRef} type="file" accept="audio/*" style={{ display:'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
+          </div>
+
+          {/* Transcript (optional) */}
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ display:'flex', justifyContent:'space-between' }}>
+              <span className="mic">Transcript <span style={{ color:'var(--mut)', fontWeight:400 }}>(optional)</span></span>
+            </div>
+            <input className="ie-inp" value={transcript} onChange={e => setTranscript(e.target.value)}
+              placeholder="What is said in the reference file…" />
+            <span style={{ fontFamily:'var(--mono)', fontSize:10, color:'var(--mut)' }}>
+              Providing the transcript improves clone quality
+            </span>
+          </div>
+
+          {/* Script */}
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ display:'flex', justifyContent:'space-between' }}>
+              <span className="mic">Text to speak</span>
+              <span className="mic">{cloneText.length} / 5000</span>
+            </div>
+            <textarea className="ie-inp" value={cloneText} onChange={e => setCloneText(e.target.value.slice(0, 5000))}
+              placeholder="What do you want the cloned voice to say…" style={{ minHeight:100 }} />
+          </div>
+
+          {/* Format */}
+          <div>
+            <span className="mic" style={{ display:'block', marginBottom:8 }}>Format</span>
+            <div style={{ display:'flex', gap:8 }}>
+              {FORMATS.map(f => (
+                <button key={f} className={`chip${cloneFormat === f ? ' on' : ''}`} onClick={() => setCloneFormat(f)}
+                  style={{ flex:1, textAlign:'center', textTransform:'uppercase' }}>
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Speed */}
+          <div>
+            <div style={{ display:'flex', justifyContent:'space-between' }}>
+              <span className="mic">Speed</span>
+              <span className="mic" style={{ color:'var(--acc)' }}>{cloneSpeed.toFixed(1)}x</span>
+            </div>
+            <input type="range" min=".5" max="2" step=".1" value={cloneSpeed}
+              onChange={e => setCloneSpeed(parseFloat(e.target.value))}
+              style={{ width:'100%', accentColor:'var(--acc)', marginTop:4 }} />
+            <div style={{ display:'flex', justifyContent:'space-between', fontFamily:'var(--mono)', fontSize:10, color:'var(--mut)', marginTop:2 }}>
+              <span>0.5x</span><span>2x</span>
+            </div>
+          </div>
+
+          {/* Clone button */}
+          <button className="btn acc" onClick={handleClone}
+            disabled={!cloneText.trim() || !cloneFile || cloning}
+            style={{ width:'100%', padding:14, fontSize:15, fontWeight:700 }}>
+            {cloning
+              ? <><div style={{ width:18,height:18,borderRadius:'50%',border:'2px solid rgba(255,255,255,.3)',borderTopColor:'#fff',animation:'spin 1s linear infinite' }} />Cloning…</>
+              : <>
+                  <svg style={{ width:18,height:18,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+                    <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/>
+                    <path d="M20 4l-8 8-4-4"/>
+                  </svg>
+                  Clone voice
+                </>
+            }
+          </button>
+        </div>
+
+        {/* ── Clone info panel ── */}
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <div style={{ border:'1px solid var(--line)', borderRadius:16, padding:'20px 22px', background:'var(--card)' }}>
+            <h4 style={{ fontSize:15, fontWeight:700, marginBottom:10 }}>How it works</h4>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {[
+                { n:'01', t:'Upload a reference', d:'Any audio with a clear voice — 10 to 30 seconds is ideal.' },
+                { n:'02', t:'Add transcript', d:'Optionally tell the model what is said in the file for better accuracy.' },
+                { n:'03', t:'Write your text', d:'Type what you want the cloned voice to read aloud.' },
+                { n:'04', t:'Clone', d:'The engine matches the voice from your reference and generates the audio.' },
+              ].map(s => (
+                <div key={s.n} style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
+                  <span style={{ fontFamily:'var(--mono)', fontSize:10, color:'var(--acc)', flexShrink:0, marginTop:3 }}>{s.n}</span>
+                  <div>
+                    <b style={{ fontSize:13, display:'block' }}>{s.t}</b>
+                    <span style={{ fontSize:12, color:'var(--mut)' }}>{s.d}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ border:'1px solid var(--line2)', borderRadius:12, padding:'12px 14px', background:'var(--panel)', display:'flex', gap:10 }}>
+            <svg style={{ width:16,height:16,fill:'none',stroke:'var(--mut)',strokeWidth:1.8,flexShrink:0,marginTop:2 }} viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>
+            </svg>
+            <p style={{ fontSize:12, color:'var(--mut)', lineHeight:1.5 }}>
+              Clone uses <b style={{ color:'var(--ink)' }}>instant voice cloning</b> — no training required.
+              The cloned audio appears in the Generated audio list below.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 /* ── Main ────────────────────────────────────────────────────────── */
 interface GeneratedAudio {
   id: string; url: string; name: string; voice: string; duration: string;
@@ -317,6 +550,9 @@ export function TtsView() {
   const [selectedVoiceName, setSelectedVoiceName] = useState('');
   const [generating, setGenerating]   = useState(false);
   const [audios, setAudios]           = useState<GeneratedAudio[]>([]);
+
+  /* Clone section toggle */
+  const [showClone, setShowClone]     = useState(false);
 
   /* Library */
   const [voices, setVoices]           = useState<Voice[]>([]);
@@ -366,7 +602,20 @@ export function TtsView() {
 
       {/* Header */}
       <div className="vhead">
-        <div><h2>Text to Speech</h2><p>Convert text to natural voice, clone any voice, or browse the voice library.</p></div>
+        <div>
+          <h2>Text to Speech</h2>
+          <p>Convert text to natural voice, clone any voice, or browse the voice library.</p>
+        </div>
+        <button
+          className={`btn${showClone ? ' acc' : ' ghost'} sm`}
+          onClick={() => setShowClone(v => !v)}
+        >
+          <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
+            <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/>
+            <path d="M20 4l-8 8-4-4"/>
+          </svg>
+          {showClone ? 'Hide Clone' : 'Clone Voice'}
+        </button>
       </div>
 
       <div className="tts-layout" style={{ display:'grid', gridTemplateColumns:'380px 1fr', gap:18, alignItems:'start' }}>
@@ -522,6 +771,20 @@ export function TtsView() {
         @media(max-width:1020px){.tts-layout{grid-template-columns:1fr!important}}
         @media(max-width:480px){.tts-meta{display:none!important}}
       `}</style>
+
+      {/* ── Clone section (toggled) ── */}
+      <AnimatePresence>
+        {showClone && (
+          <motion.div
+            initial={{ opacity:0, y:12 }}
+            animate={{ opacity:1, y:0 }}
+            exit={{ opacity:0, y:8 }}
+            transition={{ duration:.2 }}
+          >
+            <CloneSection onAudioReady={a => setAudios(prev => [a, ...prev])} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
