@@ -329,12 +329,13 @@ function CloneSection({ onAudioReady }: { onAudioReady: (audio: GeneratedAudio) 
       chunksRef.current = [];
       const mr = new MediaRecorder(stream);
       mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = () => {
+      mr.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const file = new File([blob], `recording-${Date.now()}.webm`, { type: 'audio/webm' });
+        const rawBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const fixedBlob = await fixWebmDuration(rawBlob);
+        const file = new File([fixedBlob], `recording-${Date.now()}.webm`, { type: 'audio/webm' });
         setCloneFile(file);
-        setRecPreviewUrl(URL.createObjectURL(blob));
+        setRecPreviewUrl(URL.createObjectURL(fixedBlob));
         setRecording(false);
         if (recTimerRef.current) clearInterval(recTimerRef.current);
       };
@@ -352,6 +353,25 @@ function CloneSection({ onAudioReady }: { onAudioReady: (audio: GeneratedAudio) 
     mediaRecRef.current?.stop();
     if (recTimerRef.current) clearInterval(recTimerRef.current);
   };
+
+  /* Fix webm duration metadata — browser sets it to Infinity without this */
+  const fixWebmDuration = (blob: Blob): Promise<Blob> =>
+    new Promise(resolve => {
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(blob);
+      audio.preload = 'metadata';
+      audio.onloadedmetadata = () => {
+        if (isFinite(audio.duration)) { resolve(blob); return; }
+        /* seek to end to force duration calculation */
+        audio.currentTime = 1e10;
+        audio.ontimeupdate = () => {
+          audio.ontimeupdate = null;
+          resolve(blob);
+          URL.revokeObjectURL(audio.src);
+        };
+      };
+      audio.onerror = () => resolve(blob);
+    });
 
   const fmtSec = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
