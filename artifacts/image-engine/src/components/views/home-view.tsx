@@ -1,4 +1,3 @@
-import { useState, useEffect, useRef } from 'react';
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/components/providers/app-provider';
 import { SAMPLE_IMAGES } from '@/lib/mock-data';
