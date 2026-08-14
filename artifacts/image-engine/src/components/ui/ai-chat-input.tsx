@@ -78,19 +78,39 @@ function MorphingText({ text }: { text: string }) {
 }
 
 function ModelIcon({ model, className }: { model: string; className?: string }) {
-  // Reliable Cloudinary URLs — confirmed working
   const keywordIcons: Array<[RegExp, string, string?]> = [
-    [/gemini|google/i,         'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/google-gemini-icon_l6kk5q.svg'],
-    [/gpt|openai|dall/i,       'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/openai-icon_zozuib.svg', 'dark:invert'],
+    // Gemini — only for actual Gemini/Google models
+    [/gemini|google/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/google-gemini-icon_l6kk5q.svg'],
+    // Claude / Anthropic
     [/claude|anthropic|opus/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/Claude_AI_symbol_yqfzlc.svg'],
-    [/cursor|composer/i,       'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/cursor-ai-code-icon_j4vnux.svg'],
-    [/glm|zhipu/i,             'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/z-ai-icon_xi4xvo.svg'],
-    // Groq — official logo from their public assets
-    [/groq/i,                  'https://groq.com/wp-content/uploads/2024/03/groq-logo-favicon-g-only.png'],
-    // Qwen / Alibaba
-    [/qwen|alibaba/i,          'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/google-gemini-icon_l6kk5q.svg', 'hue-rotate-[200deg] opacity-80'],
-    // Ollama / Llama / Mistral — use letter fallback (no reliable CDN icon)
+    // Cursor / Composer
+    [/cursor|composer/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/cursor-ai-code-icon_j4vnux.svg'],
+    // GLM / Zhipu
+    [/glm|zhipu/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/z-ai-icon_xi4xvo.svg'],
+    // Groq
+    [/groq/i, 'https://groq.com/wp-content/uploads/2024/03/groq-logo-favicon-g-only.png'],
   ];
+
+  // OpenAI — black SVG needs a dark background pill to show on light mode
+  if (/gpt|openai|dall/i.test(model)) {
+    return (
+      <span
+        className={cn(
+          'flex items-center justify-center rounded-full bg-[#000] shrink-0',
+          className,
+        )}
+        style={{ padding: '1px' }}
+      >
+        <img
+          src="https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/openai-icon_zozuib.svg"
+          alt={model}
+          className="object-contain invert"
+          style={{ width: '100%', height: '100%' }}
+          onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
+        />
+      </span>
+    );
+  }
 
   for (const [regex, src, filter] of keywordIcons) {
     if (regex.test(model)) {
@@ -98,18 +118,18 @@ function ModelIcon({ model, className }: { model: string; className?: string }) 
         <img
           src={src}
           alt={model}
-          className={cn('object-contain', filter, className)}
+          className={cn('object-contain shrink-0', filter, className)}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
         />
       );
     }
   }
 
-  // Letter-avatar fallback
+  // Letter-avatar fallback for Qwen, Ollama, Mistral, custom providers, etc.
   return (
     <span
       className={cn(
-        'flex items-center justify-center rounded-full bg-muted text-[8px] font-bold text-foreground/60',
+        'flex items-center justify-center rounded-full bg-muted text-[8px] font-bold text-foreground/60 shrink-0',
         className,
       )}
       style={{ minWidth: '14px', minHeight: '14px' }}
