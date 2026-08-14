@@ -170,7 +170,159 @@ export function HomeView() {
         </div>
       </div>
 
+      {/* ══ MARQUEE — Supported providers ══ */}
+      <div style={{ margin: '48px 0 0', overflow: 'hidden', position: 'relative' }}>
+        <p className="mic" style={{ marginBottom: 14, textAlign: 'center' }}>Powered by the world's best AI models</p>
+        <div style={{ position: 'relative', overflow: 'hidden' }}>
+          {/* fade edges */}
+          <div style={{ position:'absolute', left:0, top:0, bottom:0, width:80, background:'linear-gradient(to right, var(--bg), transparent)', zIndex:2, pointerEvents:'none' }} />
+          <div style={{ position:'absolute', right:0, top:0, bottom:0, width:80, background:'linear-gradient(to left, var(--bg), transparent)', zIndex:2, pointerEvents:'none' }} />
+          <div className="marquee-track" style={{ display:'flex', gap:32, width:'max-content', animation:'marquee-scroll 28s linear infinite' }}>
+            {[
+              'Gemini', 'DALL·E 3', 'Stability AI', 'fal.ai', 'Replicate',
+              'OpenRouter', 'Pollinations', 'ComfyUI', 'Claude', 'GPT-4o',
+              'Fish Audio', 'Groq', 'Ollama', 'DeepSeek',
+              // repeat for seamless loop
+              'Gemini', 'DALL·E 3', 'Stability AI', 'fal.ai', 'Replicate',
+              'OpenRouter', 'Pollinations', 'ComfyUI', 'Claude', 'GPT-4o',
+              'Fish Audio', 'Groq', 'Ollama', 'DeepSeek',
+            ].map((name, i) => (
+              <span key={i} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                fontFamily: 'var(--mono)', fontSize: 12,
+                letterSpacing: '.1em', textTransform: 'uppercase',
+                color: 'var(--mut)', whiteSpace: 'nowrap', flexShrink: 0,
+              }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--acc)', display: 'inline-block', flexShrink: 0 }} />
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ══ HOW IT WORKS ══ */}
+      <div style={{ margin: '64px 0 0', maxWidth: 900 }}>
+        <div style={{ marginBottom: 32 }}>
+          <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 700, letterSpacing: '-.02em' }}>
+            From idea to result in seconds
+          </h2>
+          <p style={{ color: 'var(--mut)', fontSize: 14, marginTop: 6 }}>
+            No setup. No complexity. Just describe what you want.
+          </p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          {[
+            {
+              step: '01',
+              title: 'Describe it',
+              desc: 'Type your idea in plain language — a prompt, a concept, a feeling. Arabic or English.',
+              icon: <svg style={{ width:22,height:22,fill:'none',stroke:'var(--acc)',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg>,
+            },
+            {
+              step: '02',
+              title: 'Pick a model',
+              desc: 'Choose from 10+ AI providers — Gemini, DALL·E, Stable Diffusion, and more.',
+              icon: <svg style={{ width:22,height:22,fill:'none',stroke:'var(--acc)',strokeWidth:1.8 }} viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>,
+            },
+            {
+              step: '03',
+              title: 'Get your result',
+              desc: 'Download, edit, upscale, or use as a starting point for your next creation.',
+              icon: <svg style={{ width:22,height:22,fill:'none',stroke:'var(--acc)',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>,
+            },
+          ].map((item, i) => (
+            <div key={i} style={{
+              background: 'var(--card)', border: '1px solid var(--line)',
+              borderRadius: 18, padding: '24px 20px',
+              display: 'flex', flexDirection: 'column', gap: 14,
+              transition: '.2s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line2)'; e.currentTarget.style.boxShadow = 'var(--sh)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                {item.icon}
+                <span className="mic">{item.step}</span>
+              </div>
+              <div>
+                <b style={{ fontSize: 15, fontWeight: 600, display: 'block', marginBottom: 6 }}>{item.title}</b>
+                <p style={{ fontSize: 13.5, color: 'var(--mut)', lineHeight: 1.6 }}>{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ══ FEATURES GRID ══ */}
+      <div style={{ margin: '64px 0 0', maxWidth: 900 }}>
+        <div style={{ marginBottom: 28 }}>
+          <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 700, letterSpacing: '-.02em' }}>
+            Everything in one place
+          </h2>
+          <p style={{ color: 'var(--mut)', fontSize: 14, marginTop: 6 }}>
+            Generate · Edit · Chat · Voice · Video — one workspace, every medium.
+          </p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+          {[
+            { id: 'generate',  label: 'Image Generation', desc: '10+ AI providers, any style, any size', icon: '🎨' },
+            { id: 'editor',    label: 'AI Image Editor',  desc: 'Edit with text — remove, replace, enhance', icon: '✏️' },
+            { id: 'chat',      label: 'AI Chat',          desc: 'Multi-model conversations with history', icon: '💬' },
+            { id: 'tts',       label: 'Voice Synthesis',  desc: 'Natural voices in Arabic & English', icon: '🎙️' },
+            { id: 'videos',    label: 'Video Library',    desc: 'Sync and browse your Facebook videos', icon: '🎬' },
+            { id: 'workflows', label: 'ComfyUI Workflows', desc: 'Advanced pipelines for power users', icon: '⚡' },
+          ].map((f, i) => (
+            <button key={i} onClick={() => setActiveView(f.id as any)}
+              style={{
+                background: 'var(--card)', border: '1px solid var(--line)',
+                borderRadius: 16, padding: '18px 16px',
+                textAlign: 'left', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', gap: 8,
+                transition: '.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--acc)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--sh)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <span style={{ fontSize: 22 }}>{f.icon}</span>
+              <b style={{ fontSize: 13.5, fontWeight: 600 }}>{f.label}</b>
+              <span style={{ fontSize: 12, color: 'var(--mut)', lineHeight: 1.5 }}>{f.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ══ CTA SECTION ══ */}
+      <div style={{
+        margin: '64px 0 0',
+        background: 'var(--dark)', border: '1px solid var(--dline)',
+        borderRadius: 24, padding: 'clamp(32px,5vw,56px)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        textAlign: 'center', gap: 20,
+      }}>
+        <span className="mic d">FREE TO USE · NO ACCOUNT REQUIRED</span>
+        <h2 style={{ fontSize: 'clamp(24px,4vw,40px)', fontWeight: 700, letterSpacing: '-.03em', color: 'var(--dtext)', maxWidth: 500, lineHeight: 1.1 }}>
+          Ready to create something unreal?
+        </h2>
+        <p style={{ color: 'var(--dmut)', fontSize: 14, maxWidth: 400 }}>
+          Start generating images, editing photos, or chatting with AI — right now, for free.
+        </p>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button className="btn acc" onClick={() => setActiveView('generate')} style={{ padding: '13px 28px', fontSize: 15, fontWeight: 700 }}>
+            <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg>
+            Start Generating
+          </button>
+          <button className="btn dark sm" onClick={() => setActiveView('editor')} style={{ padding: '13px 24px', fontSize: 15 }}>
+            Edit an Image
+          </button>
+        </div>
+      </div>
+
       <style>{`
+        @keyframes marquee-scroll {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
         @media(max-width:980px){.launch-grid{grid-template-columns:repeat(3,1fr)!important}}
         @media(max-width:560px){.launch-grid{grid-template-columns:repeat(2,1fr)!important}}
         @media(max-width:899px){.launch-grid{margin-bottom:120px}}
