@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { GeneratingOverlay } from '@/components/ui/generating-overlay';
+import { PromptInput } from '@/components/ui/ai-chat-input';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 interface Attachment {
@@ -233,10 +234,8 @@ export function ChatView() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [provOpen, setProvOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef    = useRef<HTMLTextAreaElement>(null);
   const imageInputRef  = useRef<HTMLInputElement>(null);
   const fileInputRef   = useRef<HTMLInputElement>(null);
 
@@ -281,13 +280,6 @@ export function ChatView() {
 
   /* Auto scroll */
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, isLoading]);
-
-  /* Auto resize textarea */
-  useEffect(() => {
-    const el = textareaRef.current; if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-  }, [input]);
 
   const startNew = () => { setActiveSession(null); setMessages([]); setInput(''); setAttachments([]); setLatestId(null); setView('chat'); };
   const goBack   = () => { setView('list'); setActiveSession(null); setMessages([]); fetchSessions(); };
@@ -391,8 +383,6 @@ export function ChatView() {
     return <SessionsList sessions={sessions} onSelect={openSession} onNew={startNew} onDelete={deleteSession} loading={sessionsLoading} />;
   }
 
-  const curProvider = providers.find(p => p.id === selectedProvider);
-
   /* ─── Chat view ──────────────────────────────── */
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'calc(100vh - 64px)', maxWidth:840, margin:'0 auto', padding:'0 clamp(10px,2vw,20px)' }}>
@@ -468,83 +458,22 @@ export function ChatView() {
 
       {/* ── Composer ── */}
       <div style={{ flexShrink:0, paddingBottom:12 }}>
-        {/* Attachments preview */}
-        {attachments.length > 0 && (
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:8 }}>
-            {attachments.map(a => (
-              <div key={a.id} style={{ position:'relative' }}>
-                {a.previewUrl
-                  ? <img src={a.previewUrl} alt={a.name} style={{ width:56, height:56, borderRadius:10, objectFit:'cover', border:'1px solid var(--line)' }} />
-                  : <div style={{ padding:'8px 12px', border:'1px solid var(--line)', borderRadius:10, fontSize:11, color:'var(--mut)', background:'var(--panel)' }}>{a.name}</div>
-                }
-                <button onClick={() => setAttachments(p => p.filter(x => x.id !== a.id))}
-                  style={{ position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:'50%', background:'var(--err)', border:0, color:'#fff', cursor:'pointer', display:'grid', placeItems:'center', fontSize:10 }}>
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Input box */}
-        <div style={{ display:'flex', gap:8, alignItems:'flex-end', padding:10, border:'1px solid var(--line2)', borderRadius:16, background:'var(--card)', transition:'.2s' }}
-          onFocus={() => {}} >
-          {/* Attach */}
-          <button className="ibtn" onClick={() => imageInputRef.current?.click()} aria-label="Attach image" title="Attach image">
-            <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M3 17l6-5 4 3 4-4 4 4"/></svg>
-          </button>
-          <button className="ibtn" onClick={() => fileInputRef.current?.click()} aria-label="Attach file" title="Attach file">
-            <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>
-          </button>
-
-          {/* Textarea */}
-          <textarea ref={textareaRef} value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
-            placeholder="Ask, brainstorm, or command the engine…"
-            rows={1} disabled={isLoading}
-            style={{ flex:1, border:0, background:'none', fontFamily:'var(--ui)', fontSize:14.5, resize:'none', maxHeight:160, padding:'8px 0', outline:'none', color:'var(--ink)', lineHeight:1.5 }} />
-
-          {/* Send */}
-          <button className="btn acc"
-            disabled={(!input.trim() && attachments.length === 0) || isLoading}
-            onClick={() => send(input)}
-            style={{ borderRadius:10, padding:'8px 12px', flexShrink:0 }}
-            aria-label="Send">
-            <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-              <path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>
-            </svg>
-          </button>
-        </div>
-
-        {/* Provider selector */}
-        {providers.length > 0 && (
-          <div style={{ position:'relative', marginTop:6 }}>
-            <button onClick={() => setProvOpen(v => !v)}
-              style={{ display:'flex', alignItems:'center', gap:6, background:'none', border:0, cursor:'pointer', fontFamily:'var(--mono)', fontSize:10.5, color:'var(--mut)', padding:'4px 0' }}>
-              <svg style={{ width:12,height:12,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-              {curProvider?.name ?? 'Select model'}
-              <svg style={{ width:10,height:10,fill:'none',stroke:'currentColor',strokeWidth:2, rotate: provOpen?'180deg':'0deg', transition:'.2s' }} viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
-            <AnimatePresence>
-              {provOpen && (
-                <>
-                  <div onClick={() => setProvOpen(false)} style={{ position:'fixed', inset:0, zIndex:40 }} />
-                  <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:6 }}
-                    style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:50, background:'var(--card)', border:'1px solid var(--line2)', borderRadius:14, boxShadow:'var(--sh)', padding:6, minWidth:220 }}>
-                    {providers.map(p => (
-                      <button key={p.id} onClick={() => { setSelectedProvider(p.id); setProvOpen(false); }}
-                        style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'9px 12px', border:0, borderRadius:10, background: selectedProvider===p.id ? 'var(--accsoft)' : 'none', cursor:'pointer', fontFamily:'var(--ui)', fontSize:13, color: selectedProvider===p.id ? 'var(--acc2)' : 'var(--ink)', textAlign:'left' }}>
-                        <span style={{ flex:1 }}>{p.name}</span>
-                        {selectedProvider===p.id && <svg style={{ width:14,height:14,fill:'none',stroke:'var(--acc)',strokeWidth:2 }} viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>}
-                      </button>
-                    ))}
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
+        <PromptInput
+          value={input}
+          onChange={setInput}
+          placeholder="Ask, brainstorm, or command the engine…"
+          models={providers.length > 0 ? providers.map(p => p.name) : undefined}
+          onSubmit={(text, meta) => {
+            const matched = providers.find(p => p.name === meta.model);
+            if (matched) setSelectedProvider(matched.id);
+            if (meta.attachments.length > 0) {
+              const dt = new DataTransfer();
+              meta.attachments.forEach(f => dt.items.add(f));
+              handleFiles(dt.files);
+            }
+            send(text);
+          }}
+        />
       </div>
 
       {/* Hidden file inputs */}
