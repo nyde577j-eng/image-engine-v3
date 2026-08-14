@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/components/providers/app-provider';
 import { supabase } from '@/lib/supabase';
 import { PROMPT_TEMPLATES, ASPECT_RATIOS, SAMPLERS } from '@/lib/mock-data';
+import { ProgressBar } from '@/components/ui/progress-bar';
 
 interface ImageProvider {
   id: string;
@@ -51,9 +52,13 @@ export function GenerateView() {
   const [advOpen, setAdvOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [stage, setStage] = useState('');
+  const [genProgress, setGenProgress] = useState<number | null>(null);
+  const [elapsed, setElapsed] = useState(0);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [lbOpen, setLbOpen] = useState(false);
   const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const elapsedTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTime = useRef<number>(0);
 
   useEffect(() => {
     fetch('/api/image-providers')
@@ -80,12 +85,25 @@ export function GenerateView() {
 
     setIsLoading(true);
     setGeneratedImage(null);
+    setGenProgress(null);
+    setElapsed(0);
+    startTime.current = Date.now();
+
+    // Elapsed timer — updates every second
+    elapsedTimer.current = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime.current) / 1000));
+    }, 1000);
 
     let si = 0;
     setStage(STAGES[0]);
+    setGenProgress(null); // indeterminate until first stage tick
     stageTimer.current = setInterval(() => {
       si++;
-      if (si < STAGES.length) setStage(STAGES[si]);
+      if (si < STAGES.length) {
+        setStage(STAGES[si]);
+        // Advance progress proportionally through stages
+        setGenProgress(Math.round((si / STAGES.length) * 90));
+      }
     }, 700);
 
     try {
@@ -108,6 +126,7 @@ export function GenerateView() {
         return;
       }
       setGeneratedImage(data.imageUrl);
+      setGenProgress(100);
       deductCredits(generateCost);
       toast({ title: `Image generated` });
       await supabase.from('generation_jobs').insert({
@@ -120,8 +139,10 @@ export function GenerateView() {
       toast({ title: 'Error', description: String(err), variant: 'destructive' });
     } finally {
       if (stageTimer.current) clearInterval(stageTimer.current);
+      if (elapsedTimer.current) clearInterval(elapsedTimer.current);
       setIsLoading(false);
       setStage('');
+      setGenProgress(null);
     }
   };
 
@@ -308,19 +329,14 @@ export function GenerateView() {
 
           {/* Loading state */}
           {isLoading && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, textAlign: 'center', padding: 30 }}>
-              <div style={{ position: 'relative', width: 96, height: 96 }}>
-                {/* Spin ring */}
-                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid transparent', borderTopColor: 'var(--acc)', borderRightColor: 'var(--acc)', animation: 'spin 1.1s linear infinite' }} />
-                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid var(--dline)' }} />
-                {/* Breathing dot */}
-                <div style={{ position: 'absolute', inset: 30, borderRadius: '50%', background: 'var(--acc)', animation: 'breathe 1.4s ease-in-out infinite', boxShadow: '0 0 34px rgba(255,77,31,.55)' }} />
-              </div>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--dmut)' }}>
-                {stage || 'PROCESSING'}
-              </span>
-              <div style={{ width: 'min(320px,80%)', height: 3, borderRadius: 99, background: 'var(--dline)', overflow: 'hidden' }}>
-                <div style={{ display: 'block', height: '100%', width: '40%', background: 'var(--acc)', borderRadius: 99, animation: 'slide-bar 1.2s ease-in-out infinite' }} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, textAlign: 'center', padding: 30 }}>
+              <div style={{ width: 'min(340px,85%)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <ProgressBar
+                  value={genProgress}
+                  label={stage || 'PROCESSING'}
+                  pendingLabel={`${elapsed}s`}
+                  completeLabel="Done"
+                />
               </div>
             </div>
           )}
@@ -414,9 +430,6 @@ export function GenerateView() {
 
       {/* Responsive */}
       <style>{`
-        @keyframes breathe { 0%,100%{transform:scale(.72);opacity:.7} 50%{transform:scale(1);opacity:1} }
-        @keyframes spin { to{transform:rotate(360deg)} }
-        @keyframes slide-bar { 0%{margin-left:-40%} 100%{margin-left:100%} }
         @media(max-width:1080px){ .gen-layout{ grid-template-columns:1fr !important; } }
       `}</style>
     </div>

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
+import { ProgressBar } from '@/components/ui/progress-bar';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 interface Attachment {
@@ -154,8 +155,13 @@ function SessionsList({ sessions, onSelect, onNew, onDelete, loading }: {
       </div>
 
       {loading ? (
-        <div style={{ display:'flex', justifyContent:'center', padding:'60px 0' }}>
-          <div style={{ width:32, height:32, borderRadius:'50%', border:'2px solid var(--acc)', borderTopColor:'transparent', animation:'spin 1s linear infinite' }} />
+        <div style={{ padding: '60px 0' }}>
+          <ProgressBar
+            value={null}
+            label="Loading conversations"
+            pendingLabel="Fetching"
+            completeLabel="Done"
+          />
         </div>
       ) : sessions.length === 0 ? (
         <div style={{ textAlign:'center', padding:'60px 20px', color:'var(--mut)' }}>
@@ -547,7 +553,6 @@ export function ChatView() {
       <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,.js,.ts,.tsx,.jsx,.py,.json,.csv" multiple style={{ display:'none' }} onChange={e => { handleFiles(e.target.files); e.target.value=''; }} />
 
       <style>{`
-        @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes tp{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
         @media(max-width:520px){
