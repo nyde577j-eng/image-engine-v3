@@ -29,7 +29,7 @@ export default function AnimatedGenerateButton({
   width = '100%',
 }: AnimatedGenerateButtonProps) {
   return (
-    <div className={cn('relative inline-block', className)} id={id} style={{ width }}>
+    <div className={cn('relative inline-block', className)} id={id} style={{ width, isolation: 'isolate' }}>
       <button
         type={type}
         aria-label={ariaLabel || (generating ? labelActive : labelIdle)}
@@ -133,7 +133,7 @@ export default function AnimatedGenerateButton({
           border-radius: calc(var(--radius) + var(--padding));
           pointer-events: none;
           background-image: linear-gradient(0deg, #0004, #000a);
-          z-index: -1;
+          z-index: 0;
           transition: box-shadow var(--transition), filter var(--transition);
           box-shadow:
             0 -8px 8px -6px #0000 inset,

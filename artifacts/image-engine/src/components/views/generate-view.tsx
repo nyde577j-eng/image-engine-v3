@@ -297,7 +297,7 @@ export function GenerateView() {
           </div>
 
           {/* Generate button */}
-          <div>
+          <div style={{ position: 'relative', zIndex: 1 }}>
             <AnimatedGenerateButton
               labelIdle="Generate"
               labelActive="Generating"
