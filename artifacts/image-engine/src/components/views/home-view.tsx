@@ -83,8 +83,8 @@ export function HomeView() {
       <ImageCarouselHero
         title="Make something unreal."
         description="One workspace for images, video, voice and conversation. Describe it — the engine handles the rest."
-        ctaText="Start Generating"
-        onCtaClick={() => setActiveView('generate')}
+        ctaText="Start Editing Images"
+        onCtaClick={() => setActiveView('editor')}
         images={HERO_IMAGES}
         features={[
           { title: 'Multiple Providers', description: 'Gemini, DALL·E, Stability AI, fal.ai and more.' },
