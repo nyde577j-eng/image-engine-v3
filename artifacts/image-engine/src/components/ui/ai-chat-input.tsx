@@ -78,48 +78,50 @@ function MorphingText({ text }: { text: string }) {
 }
 
 function ModelIcon({ model, className }: { model: string; className?: string }) {
-  // Map by exact name AND by keyword match for dynamic provider names
-  const exactIcons: Record<string, string> = {
-    'Composer 2.5':
-      'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/cursor-ai-code-icon_j4vnux.svg',
-    'Gemini 3.5 Flash':
-      'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/google-gemini-icon_l6kk5q.svg',
-    'GPT 5.5':
-      'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/openai-icon_zozuib.svg',
-    'Opus 4.8':
-      'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/Claude_AI_symbol_yqfzlc.svg',
-    'GLM 5.2':
-      'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/z-ai-icon_xi4xvo.svg',
-  };
+  // jsdelivr CDN for @lobehub/icons-static-png — covers all major AI providers
+  const CDN = 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/icons';
 
-  // Keyword-based fallback for real provider names from backend
+  // Keyword-based matching → official icon from lobehub CDN
   const keywordIcons: Array<[RegExp, string, string?]> = [
-    [/gemini|google/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/google-gemini-icon_l6kk5q.svg'],
-    [/gpt|openai|dall/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/openai-icon_zozuib.svg', 'dark:invert'],
-    [/claude|anthropic|opus/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/Claude_AI_symbol_yqfzlc.svg'],
-    [/cursor|composer/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/cursor-ai-code-icon_j4vnux.svg'],
-    [/glm|zhipu/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/z-ai-icon_xi4xvo.svg'],
-    [/ollama|llama|mistral/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/openai-icon_zozuib.svg', 'opacity-70'],
-    [/stability|stable/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/openai-icon_zozuib.svg', 'opacity-70 dark:invert'],
+    [/gemini|google/i,         `${CDN}/gemini.png`],
+    [/gpt|openai|dall/i,       `${CDN}/openai.png`, 'dark:invert'],
+    [/claude|anthropic|opus/i, `${CDN}/claude.png`],
+    [/groq/i,                  `${CDN}/groq.png`, 'dark:invert'],
+    [/cursor|composer/i,       `${CDN}/cursor.png`],
+    [/ollama/i,                `${CDN}/ollama.png`, 'dark:invert'],
+    [/llama|meta/i,            `${CDN}/meta.png`],
+    [/mistral/i,               `${CDN}/mistral.png`],
+    [/qwen|alibaba/i,          `${CDN}/qwen.png`],
+    [/deepseek/i,              `${CDN}/deepseek.png`],
+    [/glm|zhipu/i,             `${CDN}/zhipu.png`],
+    [/openrouter/i,            `${CDN}/openrouter.png`, 'dark:invert'],
+    [/cohere/i,                `${CDN}/cohere.png`],
+    [/stability|stable/i,      `${CDN}/stability.png`],
+    [/replicate/i,             `${CDN}/replicate.png`, 'dark:invert'],
+    [/fal/i,                   `${CDN}/fal.png`, 'dark:invert'],
+    [/pollinations/i,          `${CDN}/openai.png`, 'opacity-50 dark:invert'],
   ];
-
-  const exactSrc = exactIcons[model];
-  const exactFilter = model === 'GPT 5.5' ? 'dark:invert' : undefined;
-
-  if (exactSrc) {
-    return <img src={exactSrc} alt={model} className={cn('object-contain', exactFilter, className)} />;
-  }
 
   for (const [regex, src, filter] of keywordIcons) {
     if (regex.test(model)) {
-      return <img src={src} alt={model} className={cn('object-contain', filter, className)} />;
+      return (
+        <img
+          src={src}
+          alt={model}
+          className={cn('object-contain rounded-sm', filter, className)}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+        />
+      );
     }
   }
 
-  // Generic fallback — first letter avatar
+  // Letter-avatar fallback for completely unknown providers
   return (
     <span
-      className={cn('flex items-center justify-center rounded-full bg-muted text-[8px] font-bold text-foreground/60', className)}
+      className={cn(
+        'flex items-center justify-center rounded-full bg-muted text-[8px] font-bold text-foreground/60',
+        className,
+      )}
       style={{ minWidth: '14px', minHeight: '14px' }}
     >
       {model.charAt(0).toUpperCase()}
@@ -931,7 +933,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
                     }))
                   }
                   className={cn(
-                    'absolute bottom-full left-0 mb-2.5 z-50 w-44 rounded-2xl border border-border bg-card/95 p-1 shadow-xl backdrop-blur-md flex flex-col gap-0.5 transition-all duration-400 cursor-default',
+                    'absolute bottom-full left-0 mb-2.5 z-50 w-64 rounded-2xl border border-border bg-card/95 p-1 shadow-xl backdrop-blur-md flex flex-col gap-0.5 transition-all duration-400 cursor-default',
                     isModelSelectOpen
                       ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto ease-[cubic-bezier(0.34,1.56,0.64,1)]'
                       : 'opacity-0 scale-95 translate-y-3 pointer-events-none ease-[cubic-bezier(0.175,0.885,0.32,1.275)]',
@@ -940,7 +942,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
                   <div className="relative flex flex-col gap-0.5">
                     <div
                       style={hoverStyle}
-                      className="absolute left-0 right-0 top-0 h-8 -z-10 rounded-xl bg-accent pointer-events-none"
+                      className="absolute left-0 right-0 top-0 min-h-[32px] h-8 -z-10 rounded-xl bg-accent pointer-events-none"
                     />
                     {models.map((model, idx) => (
                       <button
@@ -958,11 +960,11 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
                           }))
                         }
                         onClick={(e) => { e.stopPropagation(); setSelectedModel(model); setIsModelSelectOpen(false); }}
-                        className="group relative flex h-8 w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-left text-xs font-medium text-foreground/80 outline-none active:scale-[0.98] cursor-default"
+                        className="group relative flex min-h-[32px] h-auto w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs font-medium text-foreground/80 outline-none active:scale-[0.98] cursor-default"
                       >
-                        <span className="flex items-center gap-2">
-                          <ModelIcon model={model} className="size-3.5 opacity-85 group-hover:opacity-100 transition-opacity" />
-                          {model}
+                        <span className="flex items-center gap-2 min-w-0">
+                          <ModelIcon model={model} className="size-3.5 opacity-85 group-hover:opacity-100 transition-opacity shrink-0" />
+                          <span className="truncate">{model}</span>
                         </span>
                       </button>
                     ))}
