@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/components/providers/app-provider';
 import { SAMPLE_IMAGES } from '@/lib/mock-data';
 import { ImageCarouselHero } from '@/components/ui/image-carousel-hero';
+import { FeatureCard, AnimatedContainer } from '@/components/ui/grid-feature-cards';
+import {
+  Sparkles, Pencil, MessageSquare, Mic, Film, Workflow,
+} from 'lucide-react';
 
 const HERO_IMAGES = [
   { id: '1', src: 'https://images.unsplash.com/photo-1684369176170-463e84248b70?auto=format&fit=crop&q=60&w=900', alt: 'AI generated art', rotation: -15 },
@@ -14,7 +19,44 @@ const HERO_IMAGES = [
   { id: '8', src: 'https://images.unsplash.com/photo-1664448003794-2d446c53dcae?auto=format&fit=crop&q=60&w=900', alt: 'Abstract composition', rotation: 10 },
 ];
 
-/* ── Icon style — defined BEFORE TILES ─────────────────────────── */
+const HOME_FEATURES = [
+  {
+    id: 'generate' as const,
+    title: 'Image Generation',
+    description: '10+ AI providers including Gemini, DALL·E, Stability AI, fal.ai and more. Any style, any size.',
+    icon: Sparkles,
+  },
+  {
+    id: 'editor' as const,
+    title: 'AI Image Editor',
+    description: 'Edit photos with text prompts — remove backgrounds, replace elements, enhance quality.',
+    icon: Pencil,
+  },
+  {
+    id: 'chat' as const,
+    title: 'AI Chat',
+    description: 'Multi-model conversations with persistent history. Supports GPT, Gemini, Claude, Groq and more.',
+    icon: MessageSquare,
+  },
+  {
+    id: 'tts' as const,
+    title: 'Voice Synthesis',
+    description: 'Convert text to natural speech in Arabic and English. Powered by Fish Audio with 1000+ voices.',
+    icon: Mic,
+  },
+  {
+    id: 'videos' as const,
+    title: 'Video Library',
+    description: 'Sync, browse and manage your Facebook video library directly from the dashboard.',
+    icon: Film,
+  },
+  {
+    id: 'workflows' as const,
+    title: 'ComfyUI Workflows',
+    description: 'Advanced generation pipelines for power users. Full ComfyUI integration with node editing.',
+    icon: Workflow,
+  },
+];
 const ICON_S: React.CSSProperties = {
   width: 22, height: 22,
   fill: 'none', stroke: 'var(--acc)',
@@ -256,40 +298,42 @@ export function HomeView() {
 
       {/* ══ FEATURES GRID ══ */}
       <div style={{ margin: '64px 0 0', maxWidth: 900 }}>
-        <div style={{ marginBottom: 28 }}>
+        <AnimatedContainer className="mb-8">
           <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 700, letterSpacing: '-.02em' }}>
             Everything in one place
           </h2>
           <p style={{ color: 'var(--mut)', fontSize: 14, marginTop: 6 }}>
             Generate · Edit · Chat · Voice · Video — one workspace, every medium.
           </p>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-          {[
-            { id: 'generate',  label: 'Image Generation', desc: '10+ AI providers, any style, any size', icon: '🎨' },
-            { id: 'editor',    label: 'AI Image Editor',  desc: 'Edit with text — remove, replace, enhance', icon: '✏️' },
-            { id: 'chat',      label: 'AI Chat',          desc: 'Multi-model conversations with history', icon: '💬' },
-            { id: 'tts',       label: 'Voice Synthesis',  desc: 'Natural voices in Arabic & English', icon: '🎙️' },
-            { id: 'videos',    label: 'Video Library',    desc: 'Sync and browse your Facebook videos', icon: '🎬' },
-            { id: 'workflows', label: 'ComfyUI Workflows', desc: 'Advanced pipelines for power users', icon: '⚡' },
-          ].map((f, i) => (
-            <button key={i} onClick={() => setActiveView(f.id as any)}
-              style={{
-                background: 'var(--card)', border: '1px solid var(--line)',
-                borderRadius: 16, padding: '18px 16px',
-                textAlign: 'left', cursor: 'pointer',
-                display: 'flex', flexDirection: 'column', gap: 8,
-                transition: '.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--acc)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--sh)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'none'; }}
-            >
-              <span style={{ fontSize: 22 }}>{f.icon}</span>
-              <b style={{ fontSize: 13.5, fontWeight: 600 }}>{f.label}</b>
-              <span style={{ fontSize: 12, color: 'var(--mut)', lineHeight: 1.5 }}>{f.desc}</span>
-            </button>
-          ))}
-        </div>
+        </AnimatedContainer>
+        <AnimatedContainer delay={0.3}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            border: '1px dashed var(--line2)',
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}>
+            {HOME_FEATURES.map((f, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveView(f.id)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0,
+                  borderRight: '1px dashed var(--line2)',
+                  borderBottom: '1px dashed var(--line2)',
+                  transition: '.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--accsoft)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+              >
+                <FeatureCard
+                  feature={{ title: f.title, description: f.description, icon: f.icon as React.ComponentType<React.SVGProps<SVGSVGElement>> }}
+                />
+              </button>
+            ))}
+          </div>
+        </AnimatedContainer>
       </div>
 
       {/* ══ CTA SECTION ══ */}
