@@ -2,9 +2,14 @@ import * as React from 'react';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
-// ----------------------------------------------------------------------
-// Transition Physics
-// ----------------------------------------------------------------------
+// SpeechRecognition type shim — not in all TS lib versions
+type SpeechRecognitionCtor = new () => SpeechRecognition;
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  }
+}
 const SPRING_TRANSITION =
   'max-width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), height 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
 const SMOOTH_HEIGHT_TRANSITION =
@@ -393,7 +398,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
     const streamRef = useRef<MediaStream | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const rafRef = useRef<number | null>(null);
-    const recognitionRef = useRef<SpeechRecognition | null>(null);
+    const recognitionRef = useRef<InstanceType<SpeechRecognitionCtor> | null>(null);
     const demoIntervalRef = useRef<number | null>(null);
     const demoTextIntervalRef = useRef<number | null>(null);
 
@@ -506,16 +511,15 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
         };
         updateVisualizer();
 
-        const SpeechRecognition =
-          window.SpeechRecognition ||
-          (window as unknown as { webkitSpeechRecognition: typeof window.SpeechRecognition }).webkitSpeechRecognition;
+        const SpeechRecognitionCtor: SpeechRecognitionCtor | undefined =
+          window.SpeechRecognition ?? window.webkitSpeechRecognition;
 
-        if (SpeechRecognition) {
-          const recognition = new SpeechRecognition();
+        if (SpeechRecognitionCtor) {
+          const recognition = new SpeechRecognitionCtor();
           recognition.continuous = true;
           recognition.interimResults = true;
           let baseline = valueRef.current;
-          recognition.onresult = (event) => {
+          recognition.onresult = (event: SpeechRecognitionEvent) => {
             let interim = '';
             let final = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -638,7 +642,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
       fileInputRef.current?.click();
     };
 
-    const handleFilesChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFilesChosen = (e: React.ChangeEvent<HTMLInputElement>): void => {
       const files = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith('image/'));
       e.target.value = '';
       if (!files.length) return;
@@ -646,13 +650,13 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
       const accepted = files.slice(0, room);
       if (!expanded) { setIsSmoothResize(false); setExpanded(true); }
       else { setIsSmoothResize(true); }
-      for (const file of accepted) {
+      accepted.forEach((file) => {
         const url = URL.createObjectURL(file);
         const img = new Image();
         img.onload = () => addAttachment(file, url, img.naturalWidth, img.naturalHeight);
         img.onerror = () => addAttachment(file, url, 800, 600);
         img.src = url;
-      }
+      });
     };
 
     const addAttachment = (file: File, url: string, width: number, height: number) => {
