@@ -78,28 +78,18 @@ function MorphingText({ text }: { text: string }) {
 }
 
 function ModelIcon({ model, className }: { model: string; className?: string }) {
-  // jsdelivr CDN for @lobehub/icons-static-png — covers all major AI providers
-  const CDN = 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/icons';
-
-  // Keyword-based matching → official icon from lobehub CDN
+  // Reliable Cloudinary URLs — confirmed working
   const keywordIcons: Array<[RegExp, string, string?]> = [
-    [/gemini|google/i,         `${CDN}/gemini.png`],
-    [/gpt|openai|dall/i,       `${CDN}/openai.png`, 'dark:invert'],
-    [/claude|anthropic|opus/i, `${CDN}/claude.png`],
-    [/groq/i,                  `${CDN}/groq.png`, 'dark:invert'],
-    [/cursor|composer/i,       `${CDN}/cursor.png`],
-    [/ollama/i,                `${CDN}/ollama.png`, 'dark:invert'],
-    [/llama|meta/i,            `${CDN}/meta.png`],
-    [/mistral/i,               `${CDN}/mistral.png`],
-    [/qwen|alibaba/i,          `${CDN}/qwen.png`],
-    [/deepseek/i,              `${CDN}/deepseek.png`],
-    [/glm|zhipu/i,             `${CDN}/zhipu.png`],
-    [/openrouter/i,            `${CDN}/openrouter.png`, 'dark:invert'],
-    [/cohere/i,                `${CDN}/cohere.png`],
-    [/stability|stable/i,      `${CDN}/stability.png`],
-    [/replicate/i,             `${CDN}/replicate.png`, 'dark:invert'],
-    [/fal/i,                   `${CDN}/fal.png`, 'dark:invert'],
-    [/pollinations/i,          `${CDN}/openai.png`, 'opacity-50 dark:invert'],
+    [/gemini|google/i,         'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/google-gemini-icon_l6kk5q.svg'],
+    [/gpt|openai|dall/i,       'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/openai-icon_zozuib.svg', 'dark:invert'],
+    [/claude|anthropic|opus/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/Claude_AI_symbol_yqfzlc.svg'],
+    [/cursor|composer/i,       'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/cursor-ai-code-icon_j4vnux.svg'],
+    [/glm|zhipu/i,             'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/z-ai-icon_xi4xvo.svg'],
+    // Groq — official logo from their public assets
+    [/groq/i,                  'https://groq.com/wp-content/uploads/2024/03/groq-logo-favicon-g-only.png'],
+    // Qwen / Alibaba
+    [/qwen|alibaba/i,          'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/google-gemini-icon_l6kk5q.svg', 'hue-rotate-[200deg] opacity-80'],
+    // Ollama / Llama / Mistral — use letter fallback (no reliable CDN icon)
   ];
 
   for (const [regex, src, filter] of keywordIcons) {
@@ -108,14 +98,14 @@ function ModelIcon({ model, className }: { model: string; className?: string }) 
         <img
           src={src}
           alt={model}
-          className={cn('object-contain rounded-sm', filter, className)}
+          className={cn('object-contain', filter, className)}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
         />
       );
     }
   }
 
-  // Letter-avatar fallback for completely unknown providers
+  // Letter-avatar fallback
   return (
     <span
       className={cn(
@@ -933,7 +923,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
                     }))
                   }
                   className={cn(
-                    'absolute bottom-full left-0 mb-2.5 z-50 w-64 rounded-2xl border border-border bg-card/95 p-1 shadow-xl backdrop-blur-md flex flex-col gap-0.5 transition-all duration-400 cursor-default',
+                    'absolute bottom-full left-0 mb-2.5 z-50 w-72 rounded-2xl border border-border bg-card/95 p-1 shadow-xl backdrop-blur-md flex flex-col gap-0.5 transition-all duration-400 cursor-default',
                     isModelSelectOpen
                       ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto ease-[cubic-bezier(0.34,1.56,0.64,1)]'
                       : 'opacity-0 scale-95 translate-y-3 pointer-events-none ease-[cubic-bezier(0.175,0.885,0.32,1.275)]',
@@ -964,7 +954,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
                       >
                         <span className="flex items-center gap-2 min-w-0">
                           <ModelIcon model={model} className="size-3.5 opacity-85 group-hover:opacity-100 transition-opacity shrink-0" />
-                          <span className="truncate">{model}</span>
+                          <span className="break-words leading-snug">{model}</span>
                         </span>
                       </button>
                     ))}
