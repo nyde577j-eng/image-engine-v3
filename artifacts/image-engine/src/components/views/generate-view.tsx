@@ -4,6 +4,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/components/providers/app-provider';
 import { supabase } from '@/lib/supabase';
 import { PROMPT_TEMPLATES, ASPECT_RATIOS, SAMPLERS } from '@/lib/mock-data';
+import { GeneratingOverlay } from '@/components/ui/generating-overlay';
+import AnimatedGenerateButton from '@/components/ui/animated-generate-button';
 
 interface ImageProvider {
   id: string;
@@ -51,9 +53,12 @@ export function GenerateView() {
   const [advOpen, setAdvOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [stage, setStage] = useState('');
+  const [genProgress, setGenProgress] = useState<number | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [lbOpen, setLbOpen] = useState(false);
   const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const elapsedTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTime = useRef<number>(0);
 
   useEffect(() => {
     fetch('/api/image-providers')
@@ -80,12 +85,18 @@ export function GenerateView() {
 
     setIsLoading(true);
     setGeneratedImage(null);
+    setGenProgress(null);
+
+    // Elapsed timer handled internally by GeneratingOverlay
 
     let si = 0;
     setStage(STAGES[0]);
     stageTimer.current = setInterval(() => {
       si++;
-      if (si < STAGES.length) setStage(STAGES[si]);
+      if (si < STAGES.length) {
+        setStage(STAGES[si]);
+        setGenProgress(Math.round((si / STAGES.length) * 90));
+      }
     }, 700);
 
     try {
@@ -108,6 +119,7 @@ export function GenerateView() {
         return;
       }
       setGeneratedImage(data.imageUrl);
+      setGenProgress(100);
       deductCredits(generateCost);
       toast({ title: `Image generated` });
       await supabase.from('generation_jobs').insert({
@@ -122,6 +134,7 @@ export function GenerateView() {
       if (stageTimer.current) clearInterval(stageTimer.current);
       setIsLoading(false);
       setStage('');
+      setGenProgress(null);
     }
   };
 
@@ -284,18 +297,16 @@ export function GenerateView() {
           </div>
 
           {/* Generate button */}
-          <div>
-            <button
-              className="btn acc"
-              onClick={handleGenerate}
+          <div style={{ position: 'relative', zIndex: 1, paddingBottom: 4 }}>
+            <AnimatedGenerateButton
+              labelIdle="Generate"
+              labelActive="Generating"
+              generating={isLoading}
+              highlightHueDeg={17}
               disabled={isLoading || (!isAdmin && credits < generateCost) || providers.length === 0}
-              style={{ width: '100%', padding: 14, fontSize: 15, fontWeight: 700, letterSpacing: '.01em' }}
-            >
-              <svg style={{ width:18,height:18,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-                <path d="M13 2 4 14h6l-1 8 9-12h-6z"/>
-              </svg>
-              {isLoading ? 'Generating…' : 'Generate'}
-            </button>
+              onClick={handleGenerate}
+              width="100%"
+            />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--mut)', marginTop: 8 }}>
               <span>≈ {batchCount} CR</span>
               <span>~12s · {prov?.name ?? 'no model'}</span>
@@ -308,21 +319,14 @@ export function GenerateView() {
 
           {/* Loading state */}
           {isLoading && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, textAlign: 'center', padding: 30 }}>
-              <div style={{ position: 'relative', width: 96, height: 96 }}>
-                {/* Spin ring */}
-                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid transparent', borderTopColor: 'var(--acc)', borderRightColor: 'var(--acc)', animation: 'spin 1.1s linear infinite' }} />
-                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid var(--dline)' }} />
-                {/* Breathing dot */}
-                <div style={{ position: 'absolute', inset: 30, borderRadius: '50%', background: 'var(--acc)', animation: 'breathe 1.4s ease-in-out infinite', boxShadow: '0 0 34px rgba(255,77,31,.55)' }} />
-              </div>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--dmut)' }}>
-                {stage || 'PROCESSING'}
-              </span>
-              <div style={{ width: 'min(320px,80%)', height: 3, borderRadius: 99, background: 'var(--dline)', overflow: 'hidden' }}>
-                <div style={{ display: 'block', height: '100%', width: '40%', background: 'var(--acc)', borderRadius: 99, animation: 'slide-bar 1.2s ease-in-out infinite' }} />
-              </div>
-            </div>
+            <AnimatePresence>
+              <GeneratingOverlay
+                progress={genProgress}
+                stage={stage || 'INITIALIZING'}
+                hint={prov?.name ?? undefined}
+                variant="canvas"
+              />
+            </AnimatePresence>
           )}
 
           {/* Idle state */}
@@ -414,9 +418,6 @@ export function GenerateView() {
 
       {/* Responsive */}
       <style>{`
-        @keyframes breathe { 0%,100%{transform:scale(.72);opacity:.7} 50%{transform:scale(1);opacity:1} }
-        @keyframes spin { to{transform:rotate(360deg)} }
-        @keyframes slide-bar { 0%{margin-left:-40%} 100%{margin-left:100%} }
         @media(max-width:1080px){ .gen-layout{ grid-template-columns:1fr !important; } }
       `}</style>
     </div>

@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
+import { GeneratingOverlay } from '@/components/ui/generating-overlay';
+import { PromptInput } from '@/components/ui/ai-chat-input';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 interface Attachment {
@@ -9,12 +11,116 @@ interface Attachment {
 interface Message {
   id: string; role: 'user' | 'assistant'; content: string;
   timestamp: Date; attachments?: Attachment[];
+  thinking?: string; // extracted reasoning/thinking block
 }
 interface ChatSession {
   id: string; title: string; created_at: string; updated_at: string;
 }
 interface Provider {
   id: string; name: string; model_name: string; is_default?: boolean;
+}
+
+/* ─── Extract thinking block from model reply ─────────────────────
+   Handles patterns from Qwen, DeepSeek-R1, and similar thinking models:
+   - <think>...</think> XML tags
+   - "Here's a thinking process:\n..." followed by the real reply
+   - "Thinking:\n..." block
+   Returns { thinking, reply } — thinking may be empty string           */
+function parseThinking(raw: string): { thinking: string; reply: string } {
+  // Pattern 1: <think>...</think> tags (DeepSeek-R1, some Qwen variants)
+  const xmlMatch = raw.match(/^<think>([\s\S]*?)<\/think>\s*([\s\S]*)$/i);
+  if (xmlMatch) {
+    return { thinking: xmlMatch[1].trim(), reply: xmlMatch[2].trim() };
+  }
+
+  // Pattern 2: "Here's a thinking process:\n..." or "Here is a thinking process:"
+  const thinkingProcMatch = raw.match(
+    /^(?:Here'?s? (?:a |my )?thinking process[:\s]*|Thinking process[:\s]*)([\s\S]+?)(?:\n\n(?=[A-Z\u0600-\u06FF])|---+\n)([\s\S]*)$/i
+  );
+  if (thinkingProcMatch) {
+    return { thinking: thinkingProcMatch[1].trim(), reply: thinkingProcMatch[2].trim() };
+  }
+
+  // Pattern 3: numbered steps block ending with "---" separator
+  const separatorMatch = raw.match(/^((?:\d+\.\s[\s\S]*?\n)+)\n?---+\n([\s\S]*)$/);
+  if (separatorMatch && separatorMatch[1].length > 100) {
+    return { thinking: separatorMatch[1].trim(), reply: separatorMatch[2].trim() };
+  }
+
+  return { thinking: '', reply: raw };
+}
+
+/* ─── Thinking block component ────────────────────────────────────── */
+function ThinkingBlock({ thinking }: { thinking: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ marginBottom: 6 }}>
+      {/* Toggle button */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'none', border: '1px solid var(--line2)',
+          borderRadius: 10, padding: '5px 10px',
+          fontFamily: 'var(--mono)', fontSize: 10.5,
+          letterSpacing: '.08em', textTransform: 'uppercase',
+          color: 'var(--mut)', cursor: 'pointer',
+          transition: '.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--acc)'; e.currentTarget.style.color = 'var(--acc)'; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line2)'; e.currentTarget.style.color = 'var(--mut)'; }}
+      >
+        {/* Brain icon */}
+        <svg style={{ width:13,height:13,fill:'none',stroke:'currentColor',strokeWidth:1.7,flexShrink:0 }} viewBox="0 0 24 24">
+          <path d="M9 3a5 5 0 0 0-3.54 8.54A4 4 0 0 0 6 19h12a4 4 0 0 0 .54-7.96 5 5 0 0 0-9.08-7A4.99 4.99 0 0 0 9 3z"/>
+        </svg>
+        Thinking
+        {/* Animated dots while "active", otherwise arrow */}
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          style={{ display: 'flex' }}
+        >
+          <svg style={{ width:11,height:11,fill:'none',stroke:'currentColor',strokeWidth:2 }} viewBox="0 0 24 24">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </motion.span>
+      </button>
+
+      {/* Collapsible content */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{
+              marginTop: 8,
+              padding: '12px 14px',
+              borderRadius: 12,
+              border: '1px dashed var(--line2)',
+              background: 'var(--panel)',
+              fontFamily: 'var(--mono)',
+              fontSize: 11.5,
+              lineHeight: 1.7,
+              color: 'var(--mut)',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              maxHeight: 320,
+              overflowY: 'auto',
+              scrollbarWidth: 'thin',
+            }}>
+              {thinking}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 /* ─── Unique browser key for privacy ─────────────────────────────── */
@@ -74,7 +180,13 @@ function Bubble({ msg, isLatest }: { msg: Message; isLatest: boolean }) {
 
   return (
     <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ duration:.18 }}
-      style={{ maxWidth:'78%', display:'flex', flexDirection:'column', gap:6, alignSelf: isUser ? 'flex-end' : 'flex-start', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
+      style={{
+        maxWidth: isUser ? '78%' : '92%',
+        width: isUser ? undefined : '100%',
+        display:'flex', flexDirection:'column', gap:6,
+        alignSelf: isUser ? 'flex-end' : 'flex-start',
+        alignItems: isUser ? 'flex-end' : 'flex-start',
+      }}>
       <span style={{ fontFamily:'var(--mono)', fontSize:10, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--mut)' }}>
         {isUser ? 'YOU' : 'ENGINE'}
       </span>
@@ -85,6 +197,9 @@ function Bubble({ msg, isLatest }: { msg: Message; isLatest: boolean }) {
           style={{ maxWidth:240, maxHeight:200, borderRadius:12, border:'1px solid var(--line)', objectFit:'cover' }} />
       ))}
 
+      {/* Thinking block — only for AI messages that have thinking content */}
+      {!isUser && msg.thinking && <ThinkingBlock thinking={msg.thinking} />}
+
       <div style={{
         padding:'13px 16px', borderRadius:16, fontSize:14.5, lineHeight:1.6,
         background: isUser ? 'var(--ink)' : 'transparent',
@@ -93,7 +208,6 @@ function Bubble({ msg, isLatest }: { msg: Message; isLatest: boolean }) {
         borderTopRightRadius: isUser ? 4 : 16,
         borderTopLeftRadius: isUser ? 16 : 4,
         wordBreak: 'break-word',
-        /* Limit AI bubble width to content — no full-width white box */
         display: 'inline-block',
         maxWidth: '100%',
       }}>
@@ -115,7 +229,104 @@ function Bubble({ msg, isLatest }: { msg: Message; isLatest: boolean }) {
   );
 }
 
-/* ─── Typing indicator ───────────────────────────────────────────── */
+/* ─── Thinking live indicator (shown while model is reasoning) ────── */
+function ThinkingLiveIndicator({
+  liveThinking,
+  onToggle,
+  open,
+}: {
+  liveThinking: string;
+  onToggle: () => void;
+  open: boolean;
+}) {
+  return (
+    <div style={{ alignSelf: 'flex-start', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {/* Animated pill button */}
+      <button
+        onClick={onToggle}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 7,
+          background: 'none',
+          border: '1px solid var(--line2)',
+          borderRadius: 20, padding: '6px 12px',
+          fontFamily: 'var(--mono)', fontSize: 10.5,
+          letterSpacing: '.1em', textTransform: 'uppercase',
+          color: 'var(--mut)', cursor: 'pointer',
+          transition: '.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--acc)'; e.currentTarget.style.color = 'var(--acc)'; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line2)'; e.currentTarget.style.color = 'var(--mut)'; }}
+      >
+        {/* Pulsing brain icon */}
+        <motion.span
+          animate={{ scale: [1, 1.18, 1] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ display: 'flex' }}
+        >
+          <svg style={{ width:13,height:13,fill:'none',stroke:'currentColor',strokeWidth:1.7 }} viewBox="0 0 24 24">
+            <path d="M9 3a5 5 0 0 0-3.54 8.54A4 4 0 0 0 6 19h12a4 4 0 0 0 .54-7.96 5 5 0 0 0-9.08-7A4.99 4.99 0 0 0 9 3z"/>
+          </svg>
+        </motion.span>
+        {/* Animated "Thinking" dots */}
+        <span>
+          Thinking
+          <motion.span
+            animate={{ opacity: [1, 0, 1] }}
+            transition={{ duration: 1.1, repeat: Infinity }}
+          >...</motion.span>
+        </span>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          style={{ display: 'flex' }}
+        >
+          <svg style={{ width:10,height:10,fill:'none',stroke:'currentColor',strokeWidth:2 }} viewBox="0 0 24 24">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </motion.span>
+      </button>
+
+      {/* Live thinking content */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{
+              padding: '10px 14px',
+              borderRadius: 12,
+              border: '1px dashed var(--line2)',
+              background: 'var(--panel)',
+              fontFamily: 'var(--mono)',
+              fontSize: 11,
+              lineHeight: 1.7,
+              color: 'var(--mut)',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              maxHeight: 240,
+              overflowY: 'auto',
+              scrollbarWidth: 'thin',
+            }}>
+              {liveThinking || '...'}
+              {/* Blinking cursor */}
+              <motion.span
+                animate={{ opacity: [1, 0, 1] }}
+                transition={{ duration: 0.8, repeat: Infinity }}
+                style={{ display: 'inline-block', width: 6, height: 10, background: 'var(--acc)', borderRadius: 1, marginLeft: 2, verticalAlign: 'middle' }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+
 function TypingIndicator() {
   return (
     <div style={{ alignSelf:'flex-start', maxWidth:'78%' }}>
@@ -154,8 +365,12 @@ function SessionsList({ sessions, onSelect, onNew, onDelete, loading }: {
       </div>
 
       {loading ? (
-        <div style={{ display:'flex', justifyContent:'center', padding:'60px 0' }}>
-          <div style={{ width:32, height:32, borderRadius:'50%', border:'2px solid var(--acc)', borderTopColor:'transparent', animation:'spin 1s linear infinite' }} />
+        <div style={{ padding: '40px 0' }}>
+          <GeneratingOverlay
+            stage="LOADING SESSIONS"
+            variant="inline"
+            showGrid={false}
+          />
         </div>
       ) : sessions.length === 0 ? (
         <div style={{ textAlign:'center', padding:'60px 20px', color:'var(--mut)' }}>
@@ -224,14 +439,15 @@ export function ChatView() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+  const [liveThinking, setLiveThinking] = useState('');
+  const [thinkingOpen, setThinkingOpen] = useState(false);
   const [latestId, setLatestId] = useState<string | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [provOpen, setProvOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef    = useRef<HTMLTextAreaElement>(null);
   const imageInputRef  = useRef<HTMLInputElement>(null);
   const fileInputRef   = useRef<HTMLInputElement>(null);
 
@@ -277,13 +493,6 @@ export function ChatView() {
   /* Auto scroll */
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, isLoading]);
 
-  /* Auto resize textarea */
-  useEffect(() => {
-    const el = textareaRef.current; if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-  }, [input]);
-
   const startNew = () => { setActiveSession(null); setMessages([]); setInput(''); setAttachments([]); setLatestId(null); setView('chat'); };
   const goBack   = () => { setView('list'); setActiveSession(null); setMessages([]); fetchSessions(); };
 
@@ -326,6 +535,9 @@ export function ChatView() {
     });
   }, []);
 
+  /* Thinking model detection */
+  const THINKING_MODELS = /qwen|deepseek-r|qwq|o1|o3|o4|thinking/i;
+
   /* Send message */
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -336,6 +548,24 @@ export function ChatView() {
     const userMsg: Message = { id: `u-${Date.now()}`, role:'user', content: trimmed, timestamp: new Date(), attachments: curAtts.length ? curAtts : undefined };
     setMessages(p => [...p, userMsg]);
     setInput(''); setAttachments([]); setIsLoading(true);
+
+    // Detect if selected provider uses a thinking model
+    const activeProv = providers.find(p => p.id === selectedProvider);
+    const modelName = activeProv?.model_name ?? '';
+    const isThinkingModel = THINKING_MODELS.test(modelName);
+
+    let thinkingTimer: ReturnType<typeof setInterval> | null = null;
+    if (isThinkingModel) {
+      setIsThinking(true);
+      setLiveThinking('');
+      setThinkingOpen(false);
+      // Simulate progressive thinking dots to give visual feedback
+      let dots = 0;
+      thinkingTimer = setInterval(() => {
+        dots++;
+        setLiveThinking(prev => prev + (dots % 4 === 0 ? '\n' : '.'));
+      }, 400);
+    }
 
     /* Create session if needed */
     let sessionId = activeSession?.id;
@@ -372,25 +602,32 @@ export function ChatView() {
       });
       const d = await res.json() as { ok:boolean; reply?:string; error?:string };
       if (!d.ok) { toast({ title:'Error', description: d.error, variant:'destructive' }); setMessages(p => p.filter(m => m.id !== userMsg.id)); return; }
-      const aiMsg: Message = { id:`a-${Date.now()}`, role:'assistant', content: d.reply ?? '', timestamp: new Date() };
+      const rawReply = d.reply ?? '';
+      const { thinking, reply } = parseThinking(rawReply);
+      // If we were showing thinking indicator, use real extracted thinking
+      const finalThinking = thinking || (isThinkingModel ? liveThinking : undefined);
+      const aiMsg: Message = { id:`a-${Date.now()}`, role:'assistant', content: reply, thinking: finalThinking || undefined, timestamp: new Date() };
       setMessages(p => [...p, aiMsg]); setLatestId(aiMsg.id);
-      if (sessionId) fetch(`/api/chat/sessions/${sessionId}/messages`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ role:'assistant', content: d.reply ?? '' }) }).catch(() => {});
+      if (sessionId) fetch(`/api/chat/sessions/${sessionId}/messages`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ role:'assistant', content: reply }) }).catch(() => {});
     } catch (err) {
       toast({ title:'Error', description: String(err), variant:'destructive' });
       setMessages(p => p.filter(m => m.id !== userMsg.id));
-    } finally { setIsLoading(false); }
-  }, [isLoading, attachments, messages, selectedProvider, activeSession, toast]);
+    } finally {
+      if (thinkingTimer) clearInterval(thinkingTimer);
+      setIsThinking(false);
+      setLiveThinking('');
+      setIsLoading(false);
+    }
+  }, [isLoading, attachments, messages, selectedProvider, providers, activeSession, toast]);
 
   /* ─── Sessions list view ─────────────────────── */
   if (view === 'list') {
     return <SessionsList sessions={sessions} onSelect={openSession} onNew={startNew} onDelete={deleteSession} loading={sessionsLoading} />;
   }
 
-  const curProvider = providers.find(p => p.id === selectedProvider);
-
   /* ─── Chat view ──────────────────────────────── */
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'calc(100vh - 64px)', maxWidth:840, margin:'0 auto', padding:'0 clamp(10px,2vw,20px)' }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'calc(100vh - 64px)', maxWidth:840, margin:'0 auto', padding:'0 clamp(10px,2vw,20px)', width:'100%', boxSizing:'border-box' }}>
 
       {/* ── Chat header ── */}
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 0', borderBottom:'1px solid var(--line)', flexShrink:0 }}>
@@ -449,9 +686,22 @@ export function ChatView() {
           ))}
         </AnimatePresence>
 
-        {/* Typing indicator */}
+        {/* Thinking indicator (for reasoning models while waiting) */}
         <AnimatePresence>
-          {isLoading && (
+          {isThinking && (
+            <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}>
+              <ThinkingLiveIndicator
+                liveThinking={liveThinking}
+                open={thinkingOpen}
+                onToggle={() => setThinkingOpen(v => !v)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Typing indicator (for non-thinking models) */}
+        <AnimatePresence>
+          {isLoading && !isThinking && (
             <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}>
               <TypingIndicator />
             </motion.div>
@@ -462,84 +712,24 @@ export function ChatView() {
       </div>
 
       {/* ── Composer ── */}
-      <div style={{ flexShrink:0, paddingBottom:12 }}>
-        {/* Attachments preview */}
-        {attachments.length > 0 && (
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:8 }}>
-            {attachments.map(a => (
-              <div key={a.id} style={{ position:'relative' }}>
-                {a.previewUrl
-                  ? <img src={a.previewUrl} alt={a.name} style={{ width:56, height:56, borderRadius:10, objectFit:'cover', border:'1px solid var(--line)' }} />
-                  : <div style={{ padding:'8px 12px', border:'1px solid var(--line)', borderRadius:10, fontSize:11, color:'var(--mut)', background:'var(--panel)' }}>{a.name}</div>
-                }
-                <button onClick={() => setAttachments(p => p.filter(x => x.id !== a.id))}
-                  style={{ position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:'50%', background:'var(--err)', border:0, color:'#fff', cursor:'pointer', display:'grid', placeItems:'center', fontSize:10 }}>
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Input box */}
-        <div style={{ display:'flex', gap:8, alignItems:'flex-end', padding:10, border:'1px solid var(--line2)', borderRadius:16, background:'var(--card)', transition:'.2s' }}
-          onFocus={() => {}} >
-          {/* Attach */}
-          <button className="ibtn" onClick={() => imageInputRef.current?.click()} aria-label="Attach image" title="Attach image">
-            <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M3 17l6-5 4 3 4-4 4 4"/></svg>
-          </button>
-          <button className="ibtn" onClick={() => fileInputRef.current?.click()} aria-label="Attach file" title="Attach file">
-            <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>
-          </button>
-
-          {/* Textarea */}
-          <textarea ref={textareaRef} value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
-            placeholder="Ask, brainstorm, or command the engine…"
-            rows={1} disabled={isLoading}
-            style={{ flex:1, border:0, background:'none', fontFamily:'var(--ui)', fontSize:14.5, resize:'none', maxHeight:160, padding:'8px 0', outline:'none', color:'var(--ink)', lineHeight:1.5 }} />
-
-          {/* Send */}
-          <button className="btn acc"
-            disabled={(!input.trim() && attachments.length === 0) || isLoading}
-            onClick={() => send(input)}
-            style={{ borderRadius:10, padding:'8px 12px', flexShrink:0 }}
-            aria-label="Send">
-            <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-              <path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>
-            </svg>
-          </button>
-        </div>
-
-        {/* Provider selector */}
-        {providers.length > 0 && (
-          <div style={{ position:'relative', marginTop:6 }}>
-            <button onClick={() => setProvOpen(v => !v)}
-              style={{ display:'flex', alignItems:'center', gap:6, background:'none', border:0, cursor:'pointer', fontFamily:'var(--mono)', fontSize:10.5, color:'var(--mut)', padding:'4px 0' }}>
-              <svg style={{ width:12,height:12,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-              {curProvider?.name ?? 'Select model'}
-              <svg style={{ width:10,height:10,fill:'none',stroke:'currentColor',strokeWidth:2, rotate: provOpen?'180deg':'0deg', transition:'.2s' }} viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
-            <AnimatePresence>
-              {provOpen && (
-                <>
-                  <div onClick={() => setProvOpen(false)} style={{ position:'fixed', inset:0, zIndex:40 }} />
-                  <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:6 }}
-                    style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:50, background:'var(--card)', border:'1px solid var(--line2)', borderRadius:14, boxShadow:'var(--sh)', padding:6, minWidth:220 }}>
-                    {providers.map(p => (
-                      <button key={p.id} onClick={() => { setSelectedProvider(p.id); setProvOpen(false); }}
-                        style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'9px 12px', border:0, borderRadius:10, background: selectedProvider===p.id ? 'var(--accsoft)' : 'none', cursor:'pointer', fontFamily:'var(--ui)', fontSize:13, color: selectedProvider===p.id ? 'var(--acc2)' : 'var(--ink)', textAlign:'left' }}>
-                        <span style={{ flex:1 }}>{p.name}</span>
-                        {selectedProvider===p.id && <svg style={{ width:14,height:14,fill:'none',stroke:'var(--acc)',strokeWidth:2 }} viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>}
-                      </button>
-                    ))}
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
+      <div style={{ flexShrink:0, paddingBottom:12, width:'100%', display:'flex', justifyContent:'center' }}>
+        <PromptInput
+          value={input}
+          onChange={setInput}
+          placeholder="Ask, brainstorm, or command the engine…"
+          models={providers.length > 0 ? providers.map(p => p.name) : undefined}
+          className="w-full"
+          onSubmit={(text, meta) => {
+            const matched = providers.find(p => p.name === meta.model);
+            if (matched) setSelectedProvider(matched.id);
+            if (meta.attachments.length > 0) {
+              const dt = new DataTransfer();
+              meta.attachments.forEach(f => dt.items.add(f));
+              handleFiles(dt.files);
+            }
+            send(text);
+          }}
+        />
       </div>
 
       {/* Hidden file inputs */}
@@ -547,11 +737,16 @@ export function ChatView() {
       <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,.js,.ts,.tsx,.jsx,.py,.json,.csv" multiple style={{ display:'none' }} onChange={e => { handleFiles(e.target.files); e.target.value=''; }} />
 
       <style>{`
-        @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes tp{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-        @media(max-width:520px){
-          div[style*="gridTemplateColumns: '1fr 1fr'"] { grid-template-columns:1fr!important; }
+        /* Mobile: collapse suggested grid to 1 col */
+        @media(max-width:480px){
+          .chat-suggested-grid { grid-template-columns:1fr!important; }
+        }
+        /* Mobile: AI bubble fills available width */
+        @media(max-width:640px){
+          .chat-ai-bubble { max-width:96%!important; }
+          .chat-user-bubble { max-width:86%!important; }
         }
       `}</style>
     </div>

@@ -1,8 +1,61 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/components/providers/app-provider';
 import { SAMPLE_IMAGES } from '@/lib/mock-data';
+import { ImageCarouselHero } from '@/components/ui/image-carousel-hero';
+import { FeatureCard, AnimatedContainer } from '@/components/ui/grid-feature-cards';
+import {
+  Sparkles, Pencil, MessageSquare, Mic, Film, Workflow,
+} from 'lucide-react';
 
-/* ── Icon style — defined BEFORE TILES ─────────────────────────── */
+const HERO_IMAGES = [
+  { id: '1', src: 'https://images.unsplash.com/photo-1684369176170-463e84248b70?auto=format&fit=crop&q=60&w=900', alt: 'AI generated art', rotation: -15 },
+  { id: '2', src: 'https://plus.unsplash.com/premium_photo-1677269465314-d5d2247a0b0c?auto=format&fit=crop&q=60&w=900', alt: 'Abstract AI', rotation: -8 },
+  { id: '3', src: 'https://images.unsplash.com/photo-1524673360092-e07b7ae58845?auto=format&fit=crop&q=60&w=900', alt: 'City skyline AI', rotation: 5 },
+  { id: '4', src: 'https://plus.unsplash.com/premium_photo-1680610653084-6e4886519caf?auto=format&fit=crop&q=60&w=900', alt: 'Nature photography AI', rotation: 12 },
+  { id: '5', src: 'https://plus.unsplash.com/premium_photo-1680608979589-e9349ed066d5?auto=format&fit=crop&q=60&w=900', alt: 'Digital art AI', rotation: -12 },
+  { id: '6', src: 'https://images.unsplash.com/photo-1562575214-da9fcf59b907?auto=format&fit=crop&q=60&w=900', alt: 'Cinematic AI', rotation: 8 },
+  { id: '7', src: 'https://plus.unsplash.com/premium_photo-1676637656210-390da73f4951?auto=format&fit=crop&q=60&w=900', alt: 'Futuristic AI', rotation: -5 },
+  { id: '8', src: 'https://images.unsplash.com/photo-1664448003794-2d446c53dcae?auto=format&fit=crop&q=60&w=900', alt: 'Abstract composition', rotation: 10 },
+];
+
+const HOME_FEATURES = [
+  {
+    id: 'generate' as const,
+    title: 'Image Generation',
+    description: '10+ AI providers including Gemini, DALL·E, Stability AI, fal.ai and more. Any style, any size.',
+    icon: Sparkles,
+  },
+  {
+    id: 'editor' as const,
+    title: 'AI Image Editor',
+    description: 'Edit photos with text prompts — remove backgrounds, replace elements, enhance quality.',
+    icon: Pencil,
+  },
+  {
+    id: 'chat' as const,
+    title: 'AI Chat',
+    description: 'Multi-model conversations with persistent history. Supports GPT, Gemini, Claude, Groq and more.',
+    icon: MessageSquare,
+  },
+  {
+    id: 'tts' as const,
+    title: 'Voice Synthesis',
+    description: 'Convert text to natural speech in Arabic and English. Powered by Fish Audio with 1000+ voices.',
+    icon: Mic,
+  },
+  {
+    id: 'videos' as const,
+    title: 'Video Library',
+    description: 'Sync, browse and manage your Facebook video library directly from the dashboard.',
+    icon: Film,
+  },
+  {
+    id: 'workflows' as const,
+    title: 'ComfyUI Workflows',
+    description: 'Advanced generation pipelines for power users. Full ComfyUI integration with node editing.',
+    icon: Workflow,
+  },
+];
 const ICON_S: React.CSSProperties = {
   width: 22, height: 22,
   fill: 'none', stroke: 'var(--acc)',
@@ -67,16 +120,19 @@ export function HomeView() {
   return (
     <div style={{ padding: 'clamp(16px,3vw,30px)', paddingBottom: 110, maxWidth: 1460, margin: '0 auto' }}>
 
-      {/* Hero */}
-      <div style={{ paddingTop: 'clamp(10px,3vw,34px)', paddingBottom: 22, maxWidth: 760 }}>
-        <h1 style={{ fontSize: 'clamp(32px,5.4vw,58px)', fontWeight: 700, letterSpacing: '-.035em', lineHeight: 1.04 }}>
-          Make something{' '}
-          <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>unreal</em>.
-        </h1>
-        <p style={{ color: 'var(--mut)', marginTop: 12, fontSize: 'clamp(14px,1.6vw,16px)', maxWidth: 560 }}>
-          One workspace for images, video, voice and conversation. Describe it — the engine handles the rest.
-        </p>
-      </div>
+      {/* ── Carousel Hero ── */}
+      <ImageCarouselHero
+        title="Make something unreal."
+        description="One workspace for images, video, voice and conversation. Describe it — the engine handles the rest."
+        ctaText="Start Editing Images"
+        onCtaClick={() => setActiveView('editor')}
+        images={HERO_IMAGES}
+        features={[
+          { title: 'Multiple Providers', description: 'Gemini, DALL·E, Stability AI, fal.ai and more.' },
+          { title: 'Fast Generation', description: 'Turn ideas into images in seconds.' },
+          { title: 'Full Workflow', description: 'Generate, edit, upscale — all in one place.' },
+        ]}
+      />
 
       {/* Command bar */}
       <form onSubmit={handleGenerate} style={{
@@ -155,7 +211,161 @@ export function HomeView() {
         </div>
       </div>
 
+      {/* ══ MARQUEE — Supported providers ══ */}
+      <div style={{ margin: '48px 0 0', overflow: 'hidden', position: 'relative' }}>
+        <p className="mic" style={{ marginBottom: 14, textAlign: 'center' }}>Powered by the world's best AI models</p>
+        <div style={{ position: 'relative', overflow: 'hidden' }}>
+          {/* fade edges */}
+          <div style={{ position:'absolute', left:0, top:0, bottom:0, width:80, background:'linear-gradient(to right, var(--bg), transparent)', zIndex:2, pointerEvents:'none' }} />
+          <div style={{ position:'absolute', right:0, top:0, bottom:0, width:80, background:'linear-gradient(to left, var(--bg), transparent)', zIndex:2, pointerEvents:'none' }} />
+          <div className="marquee-track" style={{ display:'flex', gap:32, width:'max-content', animation:'marquee-scroll 28s linear infinite' }}>
+            {[
+              'Gemini', 'DALL·E 3', 'Stability AI', 'fal.ai', 'Replicate',
+              'OpenRouter', 'Pollinations', 'ComfyUI', 'Claude', 'GPT-4o',
+              'Fish Audio', 'Groq', 'Ollama', 'DeepSeek',
+              // repeat for seamless loop
+              'Gemini', 'DALL·E 3', 'Stability AI', 'fal.ai', 'Replicate',
+              'OpenRouter', 'Pollinations', 'ComfyUI', 'Claude', 'GPT-4o',
+              'Fish Audio', 'Groq', 'Ollama', 'DeepSeek',
+            ].map((name, i) => (
+              <span key={i} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                fontFamily: 'var(--mono)', fontSize: 12,
+                letterSpacing: '.1em', textTransform: 'uppercase',
+                color: 'var(--mut)', whiteSpace: 'nowrap', flexShrink: 0,
+              }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--acc)', display: 'inline-block', flexShrink: 0 }} />
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ══ HOW IT WORKS ══ */}
+      <div style={{ margin: '64px 0 0', maxWidth: 900 }}>
+        <div style={{ marginBottom: 32 }}>
+          <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 700, letterSpacing: '-.02em' }}>
+            From idea to result in seconds
+          </h2>
+          <p style={{ color: 'var(--mut)', fontSize: 14, marginTop: 6 }}>
+            No setup. No complexity. Just describe what you want.
+          </p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          {[
+            {
+              step: '01',
+              title: 'Describe it',
+              desc: 'Type your idea in plain language — a prompt, a concept, a feeling. Arabic or English.',
+              icon: <svg style={{ width:22,height:22,fill:'none',stroke:'var(--acc)',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg>,
+            },
+            {
+              step: '02',
+              title: 'Pick a model',
+              desc: 'Choose from 10+ AI providers — Gemini, DALL·E, Stable Diffusion, and more.',
+              icon: <svg style={{ width:22,height:22,fill:'none',stroke:'var(--acc)',strokeWidth:1.8 }} viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>,
+            },
+            {
+              step: '03',
+              title: 'Get your result',
+              desc: 'Download, edit, upscale, or use as a starting point for your next creation.',
+              icon: <svg style={{ width:22,height:22,fill:'none',stroke:'var(--acc)',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>,
+            },
+          ].map((item, i) => (
+            <div key={i} style={{
+              background: 'var(--card)', border: '1px solid var(--line)',
+              borderRadius: 18, padding: '24px 20px',
+              display: 'flex', flexDirection: 'column', gap: 14,
+              transition: '.2s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line2)'; e.currentTarget.style.boxShadow = 'var(--sh)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                {item.icon}
+                <span className="mic">{item.step}</span>
+              </div>
+              <div>
+                <b style={{ fontSize: 15, fontWeight: 600, display: 'block', marginBottom: 6 }}>{item.title}</b>
+                <p style={{ fontSize: 13.5, color: 'var(--mut)', lineHeight: 1.6 }}>{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ══ FEATURES GRID ══ */}
+      <div style={{ margin: '64px 0 0', maxWidth: 900 }}>
+        <AnimatedContainer className="mb-8">
+          <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 700, letterSpacing: '-.02em' }}>
+            Everything in one place
+          </h2>
+          <p style={{ color: 'var(--mut)', fontSize: 14, marginTop: 6 }}>
+            Generate · Edit · Chat · Voice · Video — one workspace, every medium.
+          </p>
+        </AnimatedContainer>
+        <AnimatedContainer delay={0.3}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            border: '1px dashed var(--line2)',
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}>
+            {HOME_FEATURES.map((f, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveView(f.id)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0,
+                  borderRight: '1px dashed var(--line2)',
+                  borderBottom: '1px dashed var(--line2)',
+                  transition: '.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--accsoft)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+              >
+                <FeatureCard
+                  feature={{ title: f.title, description: f.description, icon: f.icon as React.ComponentType<React.SVGProps<SVGSVGElement>> }}
+                />
+              </button>
+            ))}
+          </div>
+        </AnimatedContainer>
+      </div>
+
+      {/* ══ CTA SECTION ══ */}
+      <div style={{
+        margin: '64px 0 0',
+        background: 'var(--dark)', border: '1px solid var(--dline)',
+        borderRadius: 24, padding: 'clamp(32px,5vw,56px)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        textAlign: 'center', gap: 20,
+      }}>
+        <span className="mic d">FREE TO USE · NO ACCOUNT REQUIRED</span>
+        <h2 style={{ fontSize: 'clamp(24px,4vw,40px)', fontWeight: 700, letterSpacing: '-.03em', color: 'var(--dtext)', maxWidth: 500, lineHeight: 1.1 }}>
+          Ready to create something unreal?
+        </h2>
+        <p style={{ color: 'var(--dmut)', fontSize: 14, maxWidth: 400 }}>
+          Start generating images, editing photos, or chatting with AI — right now, for free.
+        </p>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button className="btn acc" onClick={() => setActiveView('generate')} style={{ padding: '13px 28px', fontSize: 15, fontWeight: 700 }}>
+            <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg>
+            Start Generating
+          </button>
+          <button className="btn dark sm" onClick={() => setActiveView('editor')} style={{ padding: '13px 24px', fontSize: 15 }}>
+            Edit an Image
+          </button>
+        </div>
+      </div>
+
       <style>{`
+        @keyframes marquee-scroll {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
         @media(max-width:980px){.launch-grid{grid-template-columns:repeat(3,1fr)!important}}
         @media(max-width:560px){.launch-grid{grid-template-columns:repeat(2,1fr)!important}}
         @media(max-width:899px){.launch-grid{margin-bottom:120px}}

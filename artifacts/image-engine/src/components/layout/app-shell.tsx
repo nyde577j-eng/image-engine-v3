@@ -38,8 +38,29 @@ function ShellContent() {
           --line:   #2e2b24;
           --line2:  #3a3730;
           --accsoft: rgba(255,77,31,.18);
+
+          /* Tailwind semantic tokens — dark overrides */
+          --background:         24 6% 8%;
+          --foreground:         40 15% 94%;
+          --border:             30 8% 18%;
+          --input:              30 8% 18%;
+          --card-bg:            30 6% 12%;
+          --card-fg:            40 15% 94%;
+          --popover:            30 6% 12%;
+          --muted:              30 6% 14%;
+          --muted-foreground:   36 8% 57%;
+          --accent:             17 100% 56%;
+          --accent-foreground:  0 0% 100%;
+          --secondary:          30 6% 16%;
+          --secondary-foreground: 40 15% 94%;
+          --popover-foreground: 40 15% 94%;
         }
         html.dark body { background: var(--bg); color: var(--ink); }
+
+        /* Dark mode — Tailwind @theme inline bridge */
+        html.dark {
+          color-scheme: dark;
+        }
 
         /* ── RTL layout fixes ── */
         html[dir="rtl"] .topbar-title { text-align: right; }

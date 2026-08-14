@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
+import { GeneratingOverlay } from '@/components/ui/generating-overlay';
+import AnimatedGenerateButton from '@/components/ui/animated-generate-button';
 
 interface Voice {
   _id: string; title: string; description?: string;
@@ -340,8 +342,12 @@ export function TtsView() {
                   </div>
 
                   {voicesLoading ? (
-                    <div style={{ textAlign:'center', padding:'20px 0' }}>
-                      <div style={{ width:24,height:24,borderRadius:'50%',border:'2px solid var(--acc)',borderTopColor:'transparent',animation:'spin 1s linear infinite',margin:'0 auto' }} />
+                    <div style={{ padding: '12px 0' }}>
+                      <GeneratingOverlay
+                        stage="LOADING VOICES"
+                        variant="inline"
+                        showGrid={false}
+                      />
                     </div>
                   ) : (
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, maxHeight:280, overflowY:'auto', scrollbarWidth:'thin' }}>
@@ -392,13 +398,24 @@ export function TtsView() {
           </div>
 
           {/* Generate button */}
-          <button className="btn acc" onClick={handleGenerate} disabled={!text.trim() || generating}
-            style={{ width:'100%', padding:14, fontSize:15, fontWeight:700 }}>
-            {generating
-              ? <><div style={{ width:18,height:18,borderRadius:'50%',border:'2px solid rgba(255,255,255,.3)',borderTopColor:'#fff',animation:'spin 1s linear infinite' }} />Synthesizing…</>
-              : <><svg style={{ width:18,height:18,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>Synthesize voice</>
-            }
-          </button>
+          <AnimatedGenerateButton
+            labelIdle="Synthesize Voice"
+            labelActive="Synthesizing"
+            generating={generating}
+            highlightHueDeg={200}
+            disabled={!text.trim() || generating}
+            onClick={handleGenerate}
+            width="100%"
+          />
+
+          {/* TTS generation progress */}
+          {generating && (
+            <GeneratingOverlay
+              stage="SYNTHESIZING VOICE"
+              variant="inline"
+              showGrid={false}
+            />
+          )}
         </div>
 
         {/* ── Generated audio list ── */}
@@ -424,7 +441,6 @@ export function TtsView() {
       </div>
 
       <style>{`
-        @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes wv{from{height:18%}to{height:92%}}
         @media(max-width:1020px){.tts-layout{grid-template-columns:1fr!important}}
         @media(max-width:480px){.tts-meta{display:none!important}}

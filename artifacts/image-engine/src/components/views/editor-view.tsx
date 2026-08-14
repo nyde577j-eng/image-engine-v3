@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/components/providers/app-provider';
 import { supabase } from '@/lib/supabase';
+import { GeneratingOverlay } from '@/components/ui/generating-overlay';
+import AnimatedGenerateButton from '@/components/ui/animated-generate-button';
 
 const TOOLS = [
   { id: 'select',  label: 'Select',  icon: 'M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5' },
@@ -150,22 +152,15 @@ export function EditorView() {
           rows={2}
           style={{ resize:'none', marginBottom:8 }}
         />
-        <button
-          className="btn acc"
+        <AnimatedGenerateButton
+          labelIdle="Apply Edit"
+          labelActive="Editing"
+          generating={isLoading}
+          highlightHueDeg={17}
           disabled={!uploaded || !prompt.trim() || isLoading || (!isAdmin && credits < editCost)}
           onClick={handleEdit}
-          style={{ width:'100%', padding:13, fontSize:15, fontWeight:700 }}
-        >
-          {isLoading
-            ? <><div className="ed-spinner" />Editing…</>
-            : <>
-                <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-                  <path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M13 6l3 3"/>
-                </svg>
-                Apply Edit
-              </>
-          }
-        </button>
+          width="100%"
+        />
       </div>
 
       {/* ══ 3-COLUMN LAYOUT (desktop) / STACKED (mobile) ══ */}
@@ -196,10 +191,13 @@ export function EditorView() {
         >
           {/* Loading */}
           {isLoading && (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
-              <div className="ed-spinner" style={{ width:48, height:48 }} />
-              <span className="mic d">PROCESSING EDIT…</span>
-            </div>
+            <AnimatePresence>
+              <GeneratingOverlay
+                stage="PROCESSING EDIT"
+                variant="canvas"
+                showGrid={true}
+              />
+            </AnimatePresence>
           )}
 
           {/* Empty */}
@@ -263,20 +261,15 @@ export function EditorView() {
               </button>
             )}
 
-            <button className="btn acc"
+            <AnimatedGenerateButton
+              labelIdle={`Apply Edit${editCost > 0 && !isAdmin ? ` (${editCost} cr)` : ''}`}
+              labelActive="Editing"
+              generating={isLoading}
+              highlightHueDeg={17}
               disabled={!uploaded || !prompt.trim() || isLoading || (!isAdmin && credits < editCost)}
               onClick={handleEdit}
-              style={{ width:'100%', padding:13, fontSize:15, fontWeight:700 }}>
-              {isLoading
-                ? <><div className="ed-spinner" />Editing…</>
-                : <>
-                    <svg style={{ width:16,height:16,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-                      <path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M13 6l3 3"/>
-                    </svg>
-                    Apply Edit{editCost>0 && !isAdmin && <span style={{ fontSize:11, opacity:.7, marginLeft:4 }}>({editCost} cr)</span>}
-                  </>
-              }
-            </button>
+              width="100%"
+            />
 
             {result && (
               <button className="btn ghost sm" type="button" style={{ width:'100%' }}
@@ -411,16 +404,6 @@ export function EditorView() {
       {/* ════ RESPONSIVE CSS ════ */}
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        .ed-spinner {
-          display: inline-block;
-          width: 18px; height: 18px;
-          border-radius: 50%;
-          border: 2px solid rgba(255,255,255,.3);
-          border-top-color: #fff;
-          animation: spin 1s linear infinite;
-          flex-shrink: 0;
-        }
 
         .ed-drop-zone {
           border: 1px dashed var(--dline);
