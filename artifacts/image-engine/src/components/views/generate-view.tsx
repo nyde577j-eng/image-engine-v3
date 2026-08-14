@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/components/providers/app-provider';
 import { supabase } from '@/lib/supabase';
 import { PROMPT_TEMPLATES, ASPECT_RATIOS, SAMPLERS } from '@/lib/mock-data';
-import { ProgressBar } from '@/components/ui/progress-bar';
+import { GeneratingOverlay } from '@/components/ui/generating-overlay';
 
 interface ImageProvider {
   id: string;
@@ -53,7 +53,6 @@ export function GenerateView() {
   const [isLoading, setIsLoading] = useState(false);
   const [stage, setStage] = useState('');
   const [genProgress, setGenProgress] = useState<number | null>(null);
-  const [elapsed, setElapsed] = useState(0);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [lbOpen, setLbOpen] = useState(false);
   const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -86,22 +85,15 @@ export function GenerateView() {
     setIsLoading(true);
     setGeneratedImage(null);
     setGenProgress(null);
-    setElapsed(0);
-    startTime.current = Date.now();
 
-    // Elapsed timer — updates every second
-    elapsedTimer.current = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTime.current) / 1000));
-    }, 1000);
+    // Elapsed timer handled internally by GeneratingOverlay
 
     let si = 0;
     setStage(STAGES[0]);
-    setGenProgress(null); // indeterminate until first stage tick
     stageTimer.current = setInterval(() => {
       si++;
       if (si < STAGES.length) {
         setStage(STAGES[si]);
-        // Advance progress proportionally through stages
         setGenProgress(Math.round((si / STAGES.length) * 90));
       }
     }, 700);
@@ -139,7 +131,6 @@ export function GenerateView() {
       toast({ title: 'Error', description: String(err), variant: 'destructive' });
     } finally {
       if (stageTimer.current) clearInterval(stageTimer.current);
-      if (elapsedTimer.current) clearInterval(elapsedTimer.current);
       setIsLoading(false);
       setStage('');
       setGenProgress(null);
@@ -329,16 +320,14 @@ export function GenerateView() {
 
           {/* Loading state */}
           {isLoading && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, textAlign: 'center', padding: 30 }}>
-              <div style={{ width: 'min(340px,85%)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <ProgressBar
-                  value={genProgress}
-                  label={stage || 'PROCESSING'}
-                  pendingLabel={`${elapsed}s`}
-                  completeLabel="Done"
-                />
-              </div>
-            </div>
+            <AnimatePresence>
+              <GeneratingOverlay
+                progress={genProgress}
+                stage={stage || 'INITIALIZING'}
+                hint={prov?.name ?? undefined}
+                variant="canvas"
+              />
+            </AnimatePresence>
           )}
 
           {/* Idle state */}

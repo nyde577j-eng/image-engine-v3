@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
-import { ProgressBar } from '@/components/ui/progress-bar';
+import { GeneratingOverlay } from '@/components/ui/generating-overlay';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 interface Attachment {
@@ -155,12 +155,11 @@ function SessionsList({ sessions, onSelect, onNew, onDelete, loading }: {
       </div>
 
       {loading ? (
-        <div style={{ padding: '60px 0' }}>
-          <ProgressBar
-            value={null}
-            label="Loading conversations"
-            pendingLabel="Fetching"
-            completeLabel="Done"
+        <div style={{ padding: '40px 0' }}>
+          <GeneratingOverlay
+            stage="LOADING SESSIONS"
+            variant="inline"
+            showGrid={false}
           />
         </div>
       ) : sessions.length === 0 ? (

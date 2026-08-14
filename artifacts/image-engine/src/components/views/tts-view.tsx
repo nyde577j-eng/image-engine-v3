@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
-import { ProgressBar } from '@/components/ui/progress-bar';
+import { GeneratingOverlay } from '@/components/ui/generating-overlay';
 
 interface Voice {
   _id: string; title: string; description?: string;
@@ -341,12 +341,11 @@ export function TtsView() {
                   </div>
 
                   {voicesLoading ? (
-                    <div style={{ padding: '16px 0' }}>
-                      <ProgressBar
-                        value={null}
-                        label="Loading voices"
-                        pendingLabel="Fetching"
-                        completeLabel="Done"
+                    <div style={{ padding: '12px 0' }}>
+                      <GeneratingOverlay
+                        stage="LOADING VOICES"
+                        variant="inline"
+                        showGrid={false}
                       />
                     </div>
                   ) : (
@@ -408,11 +407,10 @@ export function TtsView() {
 
           {/* TTS generation progress */}
           {generating && (
-            <ProgressBar
-              value={null}
-              label="Synthesizing voice"
-              pendingLabel="Working"
-              completeLabel="Ready"
+            <GeneratingOverlay
+              stage="SYNTHESIZING VOICE"
+              variant="inline"
+              showGrid={false}
             />
           )}
         </div>

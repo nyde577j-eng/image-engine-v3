@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/components/providers/app-provider';
 import { supabase } from '@/lib/supabase';
-import { ProgressBar } from '@/components/ui/progress-bar';
+import { GeneratingOverlay } from '@/components/ui/generating-overlay';
 
 const TOOLS = [
   { id: 'select',  label: 'Select',  icon: 'M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5' },
@@ -199,14 +199,13 @@ export function EditorView() {
         >
           {/* Loading */}
           {isLoading && (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, width:'min(320px,90%)' }}>
-              <ProgressBar
-                value={null}
-                label="Processing edit"
-                pendingLabel="Working"
-                completeLabel="Done"
+            <AnimatePresence>
+              <GeneratingOverlay
+                stage="PROCESSING EDIT"
+                variant="canvas"
+                showGrid={true}
               />
-            </div>
+            </AnimatePresence>
           )}
 
           {/* Empty */}
