@@ -78,7 +78,8 @@ function MorphingText({ text }: { text: string }) {
 }
 
 function ModelIcon({ model, className }: { model: string; className?: string }) {
-  const icons: Record<string, string> = {
+  // Map by exact name AND by keyword match for dynamic provider names
+  const exactIcons: Record<string, string> = {
     'Composer 2.5':
       'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/cursor-ai-code-icon_j4vnux.svg',
     'Gemini 3.5 Flash':
@@ -90,16 +91,39 @@ function ModelIcon({ model, className }: { model: string; className?: string }) 
     'GLM 5.2':
       'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/z-ai-icon_xi4xvo.svg',
   };
-  const filters: Record<string, string> = {
-    'GPT 5.5': 'dark:invert',
-  };
 
+  // Keyword-based fallback for real provider names from backend
+  const keywordIcons: Array<[RegExp, string, string?]> = [
+    [/gemini|google/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/google-gemini-icon_l6kk5q.svg'],
+    [/gpt|openai|dall/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/openai-icon_zozuib.svg', 'dark:invert'],
+    [/claude|anthropic|opus/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/Claude_AI_symbol_yqfzlc.svg'],
+    [/cursor|composer/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695268/cursor-ai-code-icon_j4vnux.svg'],
+    [/glm|zhipu/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/z-ai-icon_xi4xvo.svg'],
+    [/ollama|llama|mistral/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/openai-icon_zozuib.svg', 'opacity-70'],
+    [/stability|stable/i, 'https://res.cloudinary.com/drhx7imeb/image/upload/v1781695269/openai-icon_zozuib.svg', 'opacity-70 dark:invert'],
+  ];
+
+  const exactSrc = exactIcons[model];
+  const exactFilter = model === 'GPT 5.5' ? 'dark:invert' : undefined;
+
+  if (exactSrc) {
+    return <img src={exactSrc} alt={model} className={cn('object-contain', exactFilter, className)} />;
+  }
+
+  for (const [regex, src, filter] of keywordIcons) {
+    if (regex.test(model)) {
+      return <img src={src} alt={model} className={cn('object-contain', filter, className)} />;
+    }
+  }
+
+  // Generic fallback — first letter avatar
   return (
-    <img
-      src={icons[model] ?? icons['GPT 5.5']}
-      alt={model}
-      className={cn('object-contain', filters[model], className)}
-    />
+    <span
+      className={cn('flex items-center justify-center rounded-full bg-muted text-[8px] font-bold text-foreground/60', className)}
+      style={{ minWidth: '14px', minHeight: '14px' }}
+    >
+      {model.charAt(0).toUpperCase()}
+    </span>
   );
 }
 
@@ -718,7 +742,8 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
           onBlur={handleBlur}
           className={cn('relative flex flex-col w-full', className)}
           style={{
-            maxWidth: expanded ? 480 : 320,
+            maxWidth: expanded ? 'min(480px, 100%)' : 'min(320px, 100%)',
+            width: '100%',
             transition: isSmoothResize
               ? 'max-width 0.15s ease-out'
               : 'max-width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',

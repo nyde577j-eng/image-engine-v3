@@ -76,7 +76,13 @@ function Bubble({ msg, isLatest }: { msg: Message; isLatest: boolean }) {
 
   return (
     <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ duration:.18 }}
-      style={{ maxWidth:'78%', display:'flex', flexDirection:'column', gap:6, alignSelf: isUser ? 'flex-end' : 'flex-start', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
+      style={{
+        maxWidth: isUser ? '78%' : '92%',
+        width: isUser ? undefined : '100%',
+        display:'flex', flexDirection:'column', gap:6,
+        alignSelf: isUser ? 'flex-end' : 'flex-start',
+        alignItems: isUser ? 'flex-end' : 'flex-start',
+      }}>
       <span style={{ fontFamily:'var(--mono)', fontSize:10, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--mut)' }}>
         {isUser ? 'YOU' : 'ENGINE'}
       </span>
@@ -385,7 +391,7 @@ export function ChatView() {
 
   /* ─── Chat view ──────────────────────────────── */
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'calc(100vh - 64px)', maxWidth:840, margin:'0 auto', padding:'0 clamp(10px,2vw,20px)' }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'calc(100vh - 64px)', maxWidth:840, margin:'0 auto', padding:'0 clamp(10px,2vw,20px)', width:'100%', boxSizing:'border-box' }}>
 
       {/* ── Chat header ── */}
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 0', borderBottom:'1px solid var(--line)', flexShrink:0 }}>
@@ -457,12 +463,13 @@ export function ChatView() {
       </div>
 
       {/* ── Composer ── */}
-      <div style={{ flexShrink:0, paddingBottom:12 }}>
+      <div style={{ flexShrink:0, paddingBottom:12, width:'100%', display:'flex', justifyContent:'center' }}>
         <PromptInput
           value={input}
           onChange={setInput}
           placeholder="Ask, brainstorm, or command the engine…"
           models={providers.length > 0 ? providers.map(p => p.name) : undefined}
+          className="w-full"
           onSubmit={(text, meta) => {
             const matched = providers.find(p => p.name === meta.model);
             if (matched) setSelectedProvider(matched.id);
@@ -483,8 +490,14 @@ export function ChatView() {
       <style>{`
         @keyframes tp{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-        @media(max-width:520px){
-          div[style*="gridTemplateColumns: '1fr 1fr'"] { grid-template-columns:1fr!important; }
+        /* Mobile: collapse suggested grid to 1 col */
+        @media(max-width:480px){
+          .chat-suggested-grid { grid-template-columns:1fr!important; }
+        }
+        /* Mobile: AI bubble fills available width */
+        @media(max-width:640px){
+          .chat-ai-bubble { max-width:96%!important; }
+          .chat-user-bubble { max-width:86%!important; }
         }
       `}</style>
     </div>
