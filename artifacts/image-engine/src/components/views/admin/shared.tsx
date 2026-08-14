@@ -32,7 +32,7 @@ export function AdminCard({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-border bg-card/50 backdrop-blur-sm',
+        'rounded-2xl border border-border bg-card',
         className,
       )}
     >

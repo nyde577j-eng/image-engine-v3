@@ -46,13 +46,13 @@ function ShellContent() {
           --input:              30 8% 18%;
           --card-bg:            30 6% 12%;
           --card-fg:            40 15% 94%;
+          --popover:            30 6% 12%;
           --muted:              30 6% 14%;
           --muted-foreground:   36 8% 57%;
           --accent:             17 100% 56%;
           --accent-foreground:  0 0% 100%;
           --secondary:          30 6% 16%;
           --secondary-foreground: 40 15% 94%;
-          --popover:            30 6% 12%;
           --popover-foreground: 40 15% 94%;
         }
         html.dark body { background: var(--bg); color: var(--ink); }
