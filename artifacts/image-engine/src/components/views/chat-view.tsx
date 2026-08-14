@@ -11,12 +11,116 @@ interface Attachment {
 interface Message {
   id: string; role: 'user' | 'assistant'; content: string;
   timestamp: Date; attachments?: Attachment[];
+  thinking?: string; // extracted reasoning/thinking block
 }
 interface ChatSession {
   id: string; title: string; created_at: string; updated_at: string;
 }
 interface Provider {
   id: string; name: string; model_name: string; is_default?: boolean;
+}
+
+/* ─── Extract thinking block from model reply ─────────────────────
+   Handles patterns from Qwen, DeepSeek-R1, and similar thinking models:
+   - <think>...</think> XML tags
+   - "Here's a thinking process:\n..." followed by the real reply
+   - "Thinking:\n..." block
+   Returns { thinking, reply } — thinking may be empty string           */
+function parseThinking(raw: string): { thinking: string; reply: string } {
+  // Pattern 1: <think>...</think> tags (DeepSeek-R1, some Qwen variants)
+  const xmlMatch = raw.match(/^<think>([\s\S]*?)<\/think>\s*([\s\S]*)$/i);
+  if (xmlMatch) {
+    return { thinking: xmlMatch[1].trim(), reply: xmlMatch[2].trim() };
+  }
+
+  // Pattern 2: "Here's a thinking process:\n..." or "Here is a thinking process:"
+  const thinkingProcMatch = raw.match(
+    /^(?:Here'?s? (?:a |my )?thinking process[:\s]*|Thinking process[:\s]*)([\s\S]+?)(?:\n\n(?=[A-Z\u0600-\u06FF])|---+\n)([\s\S]*)$/i
+  );
+  if (thinkingProcMatch) {
+    return { thinking: thinkingProcMatch[1].trim(), reply: thinkingProcMatch[2].trim() };
+  }
+
+  // Pattern 3: numbered steps block ending with "---" separator
+  const separatorMatch = raw.match(/^((?:\d+\.\s[\s\S]*?\n)+)\n?---+\n([\s\S]*)$/);
+  if (separatorMatch && separatorMatch[1].length > 100) {
+    return { thinking: separatorMatch[1].trim(), reply: separatorMatch[2].trim() };
+  }
+
+  return { thinking: '', reply: raw };
+}
+
+/* ─── Thinking block component ────────────────────────────────────── */
+function ThinkingBlock({ thinking }: { thinking: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ marginBottom: 6 }}>
+      {/* Toggle button */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'none', border: '1px solid var(--line2)',
+          borderRadius: 10, padding: '5px 10px',
+          fontFamily: 'var(--mono)', fontSize: 10.5,
+          letterSpacing: '.08em', textTransform: 'uppercase',
+          color: 'var(--mut)', cursor: 'pointer',
+          transition: '.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--acc)'; e.currentTarget.style.color = 'var(--acc)'; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line2)'; e.currentTarget.style.color = 'var(--mut)'; }}
+      >
+        {/* Brain icon */}
+        <svg style={{ width:13,height:13,fill:'none',stroke:'currentColor',strokeWidth:1.7,flexShrink:0 }} viewBox="0 0 24 24">
+          <path d="M9 3a5 5 0 0 0-3.54 8.54A4 4 0 0 0 6 19h12a4 4 0 0 0 .54-7.96 5 5 0 0 0-9.08-7A4.99 4.99 0 0 0 9 3z"/>
+        </svg>
+        Thinking
+        {/* Animated dots while "active", otherwise arrow */}
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          style={{ display: 'flex' }}
+        >
+          <svg style={{ width:11,height:11,fill:'none',stroke:'currentColor',strokeWidth:2 }} viewBox="0 0 24 24">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </motion.span>
+      </button>
+
+      {/* Collapsible content */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{
+              marginTop: 8,
+              padding: '12px 14px',
+              borderRadius: 12,
+              border: '1px dashed var(--line2)',
+              background: 'var(--panel)',
+              fontFamily: 'var(--mono)',
+              fontSize: 11.5,
+              lineHeight: 1.7,
+              color: 'var(--mut)',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              maxHeight: 320,
+              overflowY: 'auto',
+              scrollbarWidth: 'thin',
+            }}>
+              {thinking}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 /* ─── Unique browser key for privacy ─────────────────────────────── */
@@ -93,6 +197,9 @@ function Bubble({ msg, isLatest }: { msg: Message; isLatest: boolean }) {
           style={{ maxWidth:240, maxHeight:200, borderRadius:12, border:'1px solid var(--line)', objectFit:'cover' }} />
       ))}
 
+      {/* Thinking block — only for AI messages that have thinking content */}
+      {!isUser && msg.thinking && <ThinkingBlock thinking={msg.thinking} />}
+
       <div style={{
         padding:'13px 16px', borderRadius:16, fontSize:14.5, lineHeight:1.6,
         background: isUser ? 'var(--ink)' : 'transparent',
@@ -101,7 +208,6 @@ function Bubble({ msg, isLatest }: { msg: Message; isLatest: boolean }) {
         borderTopRightRadius: isUser ? 4 : 16,
         borderTopLeftRadius: isUser ? 16 : 4,
         wordBreak: 'break-word',
-        /* Limit AI bubble width to content — no full-width white box */
         display: 'inline-block',
         maxWidth: '100%',
       }}>
@@ -375,9 +481,11 @@ export function ChatView() {
       });
       const d = await res.json() as { ok:boolean; reply?:string; error?:string };
       if (!d.ok) { toast({ title:'Error', description: d.error, variant:'destructive' }); setMessages(p => p.filter(m => m.id !== userMsg.id)); return; }
-      const aiMsg: Message = { id:`a-${Date.now()}`, role:'assistant', content: d.reply ?? '', timestamp: new Date() };
+      const rawReply = d.reply ?? '';
+      const { thinking, reply } = parseThinking(rawReply);
+      const aiMsg: Message = { id:`a-${Date.now()}`, role:'assistant', content: reply, thinking: thinking || undefined, timestamp: new Date() };
       setMessages(p => [...p, aiMsg]); setLatestId(aiMsg.id);
-      if (sessionId) fetch(`/api/chat/sessions/${sessionId}/messages`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ role:'assistant', content: d.reply ?? '' }) }).catch(() => {});
+      if (sessionId) fetch(`/api/chat/sessions/${sessionId}/messages`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ role:'assistant', content: reply }) }).catch(() => {});
     } catch (err) {
       toast({ title:'Error', description: String(err), variant:'destructive' });
       setMessages(p => p.filter(m => m.id !== userMsg.id));
