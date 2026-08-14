@@ -229,7 +229,104 @@ function Bubble({ msg, isLatest }: { msg: Message; isLatest: boolean }) {
   );
 }
 
-/* ─── Typing indicator ───────────────────────────────────────────── */
+/* ─── Thinking live indicator (shown while model is reasoning) ────── */
+function ThinkingLiveIndicator({
+  liveThinking,
+  onToggle,
+  open,
+}: {
+  liveThinking: string;
+  onToggle: () => void;
+  open: boolean;
+}) {
+  return (
+    <div style={{ alignSelf: 'flex-start', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {/* Animated pill button */}
+      <button
+        onClick={onToggle}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 7,
+          background: 'none',
+          border: '1px solid var(--line2)',
+          borderRadius: 20, padding: '6px 12px',
+          fontFamily: 'var(--mono)', fontSize: 10.5,
+          letterSpacing: '.1em', textTransform: 'uppercase',
+          color: 'var(--mut)', cursor: 'pointer',
+          transition: '.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--acc)'; e.currentTarget.style.color = 'var(--acc)'; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line2)'; e.currentTarget.style.color = 'var(--mut)'; }}
+      >
+        {/* Pulsing brain icon */}
+        <motion.span
+          animate={{ scale: [1, 1.18, 1] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ display: 'flex' }}
+        >
+          <svg style={{ width:13,height:13,fill:'none',stroke:'currentColor',strokeWidth:1.7 }} viewBox="0 0 24 24">
+            <path d="M9 3a5 5 0 0 0-3.54 8.54A4 4 0 0 0 6 19h12a4 4 0 0 0 .54-7.96 5 5 0 0 0-9.08-7A4.99 4.99 0 0 0 9 3z"/>
+          </svg>
+        </motion.span>
+        {/* Animated "Thinking" dots */}
+        <span>
+          Thinking
+          <motion.span
+            animate={{ opacity: [1, 0, 1] }}
+            transition={{ duration: 1.1, repeat: Infinity }}
+          >...</motion.span>
+        </span>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          style={{ display: 'flex' }}
+        >
+          <svg style={{ width:10,height:10,fill:'none',stroke:'currentColor',strokeWidth:2 }} viewBox="0 0 24 24">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </motion.span>
+      </button>
+
+      {/* Live thinking content */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{
+              padding: '10px 14px',
+              borderRadius: 12,
+              border: '1px dashed var(--line2)',
+              background: 'var(--panel)',
+              fontFamily: 'var(--mono)',
+              fontSize: 11,
+              lineHeight: 1.7,
+              color: 'var(--mut)',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              maxHeight: 240,
+              overflowY: 'auto',
+              scrollbarWidth: 'thin',
+            }}>
+              {liveThinking || '...'}
+              {/* Blinking cursor */}
+              <motion.span
+                animate={{ opacity: [1, 0, 1] }}
+                transition={{ duration: 0.8, repeat: Infinity }}
+                style={{ display: 'inline-block', width: 6, height: 10, background: 'var(--acc)', borderRadius: 1, marginLeft: 2, verticalAlign: 'middle' }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+
 function TypingIndicator() {
   return (
     <div style={{ alignSelf:'flex-start', maxWidth:'78%' }}>
@@ -342,6 +439,9 @@ export function ChatView() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+  const [liveThinking, setLiveThinking] = useState('');
+  const [thinkingOpen, setThinkingOpen] = useState(false);
   const [latestId, setLatestId] = useState<string | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState('');
@@ -435,6 +535,9 @@ export function ChatView() {
     });
   }, []);
 
+  /* Thinking model detection */
+  const THINKING_MODELS = /qwen|deepseek-r|qwq|o1|o3|o4|thinking/i;
+
   /* Send message */
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -445,6 +548,24 @@ export function ChatView() {
     const userMsg: Message = { id: `u-${Date.now()}`, role:'user', content: trimmed, timestamp: new Date(), attachments: curAtts.length ? curAtts : undefined };
     setMessages(p => [...p, userMsg]);
     setInput(''); setAttachments([]); setIsLoading(true);
+
+    // Detect if selected provider uses a thinking model
+    const activeProv = providers.find(p => p.id === selectedProvider);
+    const modelName = activeProv?.model_name ?? '';
+    const isThinkingModel = THINKING_MODELS.test(modelName);
+
+    let thinkingTimer: ReturnType<typeof setInterval> | null = null;
+    if (isThinkingModel) {
+      setIsThinking(true);
+      setLiveThinking('');
+      setThinkingOpen(false);
+      // Simulate progressive thinking dots to give visual feedback
+      let dots = 0;
+      thinkingTimer = setInterval(() => {
+        dots++;
+        setLiveThinking(prev => prev + (dots % 4 === 0 ? '\n' : '.'));
+      }, 400);
+    }
 
     /* Create session if needed */
     let sessionId = activeSession?.id;
@@ -483,14 +604,21 @@ export function ChatView() {
       if (!d.ok) { toast({ title:'Error', description: d.error, variant:'destructive' }); setMessages(p => p.filter(m => m.id !== userMsg.id)); return; }
       const rawReply = d.reply ?? '';
       const { thinking, reply } = parseThinking(rawReply);
-      const aiMsg: Message = { id:`a-${Date.now()}`, role:'assistant', content: reply, thinking: thinking || undefined, timestamp: new Date() };
+      // If we were showing thinking indicator, use real extracted thinking
+      const finalThinking = thinking || (isThinkingModel ? liveThinking : undefined);
+      const aiMsg: Message = { id:`a-${Date.now()}`, role:'assistant', content: reply, thinking: finalThinking || undefined, timestamp: new Date() };
       setMessages(p => [...p, aiMsg]); setLatestId(aiMsg.id);
       if (sessionId) fetch(`/api/chat/sessions/${sessionId}/messages`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ role:'assistant', content: reply }) }).catch(() => {});
     } catch (err) {
       toast({ title:'Error', description: String(err), variant:'destructive' });
       setMessages(p => p.filter(m => m.id !== userMsg.id));
-    } finally { setIsLoading(false); }
-  }, [isLoading, attachments, messages, selectedProvider, activeSession, toast]);
+    } finally {
+      if (thinkingTimer) clearInterval(thinkingTimer);
+      setIsThinking(false);
+      setLiveThinking('');
+      setIsLoading(false);
+    }
+  }, [isLoading, attachments, messages, selectedProvider, providers, activeSession, toast]);
 
   /* ─── Sessions list view ─────────────────────── */
   if (view === 'list') {
@@ -558,9 +686,22 @@ export function ChatView() {
           ))}
         </AnimatePresence>
 
-        {/* Typing indicator */}
+        {/* Thinking indicator (for reasoning models while waiting) */}
         <AnimatePresence>
-          {isLoading && (
+          {isThinking && (
+            <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}>
+              <ThinkingLiveIndicator
+                liveThinking={liveThinking}
+                open={thinkingOpen}
+                onToggle={() => setThinkingOpen(v => !v)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Typing indicator (for non-thinking models) */}
+        <AnimatePresence>
+          {isLoading && !isThinking && (
             <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}>
               <TypingIndicator />
             </motion.div>
