@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/components/providers/app-provider';
 import { SAMPLE_IMAGES } from '@/lib/mock-data';
+import { ImageCarouselHero } from '@/components/ui/image-carousel-hero';
+
+const HERO_IMAGES = [
+  { id: '1', src: 'https://images.unsplash.com/photo-1684369176170-463e84248b70?auto=format&fit=crop&q=60&w=900', alt: 'AI generated art', rotation: -15 },
+  { id: '2', src: 'https://plus.unsplash.com/premium_photo-1677269465314-d5d2247a0b0c?auto=format&fit=crop&q=60&w=900', alt: 'Abstract AI', rotation: -8 },
+  { id: '3', src: 'https://images.unsplash.com/photo-1524673360092-e07b7ae58845?auto=format&fit=crop&q=60&w=900', alt: 'City skyline AI', rotation: 5 },
+  { id: '4', src: 'https://plus.unsplash.com/premium_photo-1680610653084-6e4886519caf?auto=format&fit=crop&q=60&w=900', alt: 'Nature photography AI', rotation: 12 },
+  { id: '5', src: 'https://plus.unsplash.com/premium_photo-1680608979589-e9349ed066d5?auto=format&fit=crop&q=60&w=900', alt: 'Digital art AI', rotation: -12 },
+  { id: '6', src: 'https://images.unsplash.com/photo-1562575214-da9fcf59b907?auto=format&fit=crop&q=60&w=900', alt: 'Cinematic AI', rotation: 8 },
+  { id: '7', src: 'https://plus.unsplash.com/premium_photo-1676637656210-390da73f4951?auto=format&fit=crop&q=60&w=900', alt: 'Futuristic AI', rotation: -5 },
+  { id: '8', src: 'https://images.unsplash.com/photo-1664448003794-2d446c53dcae?auto=format&fit=crop&q=60&w=900', alt: 'Abstract composition', rotation: 10 },
+];
 
 /* ── Icon style — defined BEFORE TILES ─────────────────────────── */
 const ICON_S: React.CSSProperties = {
@@ -67,16 +79,19 @@ export function HomeView() {
   return (
     <div style={{ padding: 'clamp(16px,3vw,30px)', paddingBottom: 110, maxWidth: 1460, margin: '0 auto' }}>
 
-      {/* Hero */}
-      <div style={{ paddingTop: 'clamp(10px,3vw,34px)', paddingBottom: 22, maxWidth: 760 }}>
-        <h1 style={{ fontSize: 'clamp(32px,5.4vw,58px)', fontWeight: 700, letterSpacing: '-.035em', lineHeight: 1.04 }}>
-          Make something{' '}
-          <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>unreal</em>.
-        </h1>
-        <p style={{ color: 'var(--mut)', marginTop: 12, fontSize: 'clamp(14px,1.6vw,16px)', maxWidth: 560 }}>
-          One workspace for images, video, voice and conversation. Describe it — the engine handles the rest.
-        </p>
-      </div>
+      {/* ── Carousel Hero ── */}
+      <ImageCarouselHero
+        title="Make something unreal."
+        description="One workspace for images, video, voice and conversation. Describe it — the engine handles the rest."
+        ctaText="Start Generating"
+        onCtaClick={() => setActiveView('generate')}
+        images={HERO_IMAGES}
+        features={[
+          { title: 'Multiple Providers', description: 'Gemini, DALL·E, Stability AI, fal.ai and more.' },
+          { title: 'Fast Generation', description: 'Turn ideas into images in seconds.' },
+          { title: 'Full Workflow', description: 'Generate, edit, upscale — all in one place.' },
+        ]}
+      />
 
       {/* Command bar */}
       <form onSubmit={handleGenerate} style={{
