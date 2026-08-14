@@ -101,24 +101,19 @@ export default function AnimatedGenerateButton({
           --highlight-80: hsla(var(--highlight-hue), 100%, 70%, 0.8);
           --ui-anim-svg-fill: #e8e8e8;
 
-          background: #1a1816;
+          background: #0d0d0d;
           color: #fff;
-          border: 1px solid rgba(255,255,255,0.12);
+          border: 1px solid rgba(255,255,255,0.15);
           font-family: var(--ui);
           font-size: 15px;
           font-weight: 700;
           letter-spacing: .01em;
 
           box-shadow:
-            inset 0px 1px 1px rgba(255,255,255,0.2),
-            inset 0px 2px 2px rgba(255,255,255,0.15),
-            inset 0px 4px 4px rgba(255,255,255,0.1),
-            inset 0px 8px 8px rgba(255,255,255,0.05),
-            0 -1px 1px rgba(0,0,0,0.02),
-            0 -2px 2px rgba(0,0,0,0.03),
-            0 -4px 4px rgba(0,0,0,0.05),
-            0 4px 8px rgba(0,0,0,0.3),
-            0 8px 20px rgba(0,0,0,0.25);
+            inset 0px 1px 0px rgba(255,255,255,0.12),
+            inset 0px 2px 4px rgba(255,255,255,0.06),
+            0 4px 8px rgba(0,0,0,0.4),
+            0 8px 20px rgba(0,0,0,0.3);
 
           transition: box-shadow var(--transition), border-color var(--transition), background-color var(--transition);
         }
