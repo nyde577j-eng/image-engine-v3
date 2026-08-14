@@ -126,22 +126,16 @@ export default function AnimatedGenerateButton({
         .ui-anim-btn::before {
           content: "";
           position: absolute;
-          top: calc(0px - var(--padding));
-          left: calc(0px - var(--padding));
-          width: calc(100% + var(--padding) * 2);
-          height: calc(100% + var(--padding) * 2);
-          border-radius: calc(var(--radius) + var(--padding));
+          inset: 0;
+          border-radius: inherit;
           pointer-events: none;
-          background-image: linear-gradient(0deg, #0004, #000a);
           z-index: 0;
-          transition: box-shadow var(--transition), filter var(--transition);
+          transition: box-shadow var(--transition);
           box-shadow:
-            0 -8px 8px -6px #0000 inset,
-            0 -16px 16px -8px #00000000 inset,
-            1px 1px 1px #fff2,
-            2px 2px 2px #fff1,
-            -1px -1px 1px #0002,
-            -2px -2px 2px #0001;
+            1px 1px 1px #fff2 inset,
+            2px 2px 2px #fff1 inset,
+            -1px -1px 1px #0002 inset,
+            -2px -2px 2px #0001 inset;
         }
 
         .ui-anim-btn::after {
@@ -224,10 +218,8 @@ export default function AnimatedGenerateButton({
           box-shadow:
             0 -8px 8px -6px #fffa inset,
             0 -16px 16px -8px var(--highlight-30) inset,
-            1px 1px 1px #fff2,
-            2px 2px 2px #fff1,
-            -1px -1px 1px #0002,
-            -2px -2px 2px #0001;
+            1px 1px 1px #fff2 inset,
+            2px 2px 2px #fff1 inset;
         }
 
         .ui-anim-btn:hover::after {
@@ -256,10 +248,8 @@ export default function AnimatedGenerateButton({
           box-shadow:
             0 -8px 12px -6px #fffa inset,
             0 -16px 16px -8px var(--highlight-80) inset,
-            1px 1px 1px #fff4,
-            2px 2px 2px #fff2,
-            -1px -1px 1px #0002,
-            -2px -2px 2px #0001;
+            1px 1px 1px #fff4 inset,
+            2px 2px 2px #fff2 inset;
         }
 
         .ui-anim-btn:active::after {
@@ -289,10 +279,8 @@ export default function AnimatedGenerateButton({
           box-shadow:
             0 -8px 12px -6px #fff3 inset,
             0 -16px 16px -8px var(--highlight-20) inset,
-            1px 1px 1px #fff3,
-            2px 2px 2px #fff1,
-            -1px -1px 1px #0002,
-            -2px -2px 2px #0001;
+            1px 1px 1px #fff3 inset,
+            2px 2px 2px #fff1 inset;
         }
 
         .ui-anim-btn:focus::after {
