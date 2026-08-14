@@ -2,8 +2,29 @@ import * as React from 'react';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
-// SpeechRecognition type shim — not in all TS lib versions
-type SpeechRecognitionCtor = new () => SpeechRecognition;
+// SpeechRecognition type shim — defined manually to avoid lib:dom dependency
+interface ISpeechRecognitionResult {
+  readonly isFinal: boolean;
+  [index: number]: { readonly transcript: string };
+}
+interface ISpeechRecognitionResultList {
+  readonly length: number;
+  [index: number]: ISpeechRecognitionResult;
+}
+interface ISpeechRecognitionEvent {
+  readonly resultIndex: number;
+  readonly results: ISpeechRecognitionResultList;
+}
+interface ISpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: ISpeechRecognitionEvent) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+type SpeechRecognitionCtor = new () => ISpeechRecognition;
 declare global {
   interface Window {
     SpeechRecognition?: SpeechRecognitionCtor;
@@ -398,7 +419,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
     const streamRef = useRef<MediaStream | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const rafRef = useRef<number | null>(null);
-    const recognitionRef = useRef<InstanceType<SpeechRecognitionCtor> | null>(null);
+    const recognitionRef = useRef<ISpeechRecognition | null>(null);
     const demoIntervalRef = useRef<number | null>(null);
     const demoTextIntervalRef = useRef<number | null>(null);
 
@@ -519,7 +540,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
           recognition.continuous = true;
           recognition.interimResults = true;
           let baseline = valueRef.current;
-          recognition.onresult = (event: SpeechRecognitionEvent) => {
+          recognition.onresult = (event: ISpeechRecognitionEvent) => {
             let interim = '';
             let final = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -573,6 +594,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
         }, 50);
         return () => clearTimeout(timer);
       }
+      return undefined;
     }, [expanded, isRecording]);
 
     useEffect(() => {
