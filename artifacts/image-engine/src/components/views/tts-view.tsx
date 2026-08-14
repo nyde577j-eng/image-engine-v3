@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { GeneratingOverlay } from '@/components/ui/generating-overlay';
+import AnimatedGenerateButton from '@/components/ui/animated-generate-button';
 
 interface Voice {
   _id: string; title: string; description?: string;
@@ -397,13 +398,15 @@ export function TtsView() {
           </div>
 
           {/* Generate button */}
-          <button className="btn acc" onClick={handleGenerate} disabled={!text.trim() || generating}
-            style={{ width:'100%', padding:14, fontSize:15, fontWeight:700 }}>
-            {generating
-              ? <span style={{ display:'flex', alignItems:'center', gap:8, justifyContent:'center', fontSize:13, fontFamily:'var(--mono)' }}>Synthesizing…</span>
-              : <><svg style={{ width:18,height:18,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>Synthesize voice</>
-            }
-          </button>
+          <AnimatedGenerateButton
+            labelIdle="Synthesize Voice"
+            labelActive="Synthesizing"
+            generating={generating}
+            highlightHueDeg={200}
+            disabled={!text.trim() || generating}
+            onClick={handleGenerate}
+            width="100%"
+          />
 
           {/* TTS generation progress */}
           {generating && (

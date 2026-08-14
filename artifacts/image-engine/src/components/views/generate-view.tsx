@@ -5,6 +5,7 @@ import { useApp } from '@/components/providers/app-provider';
 import { supabase } from '@/lib/supabase';
 import { PROMPT_TEMPLATES, ASPECT_RATIOS, SAMPLERS } from '@/lib/mock-data';
 import { GeneratingOverlay } from '@/components/ui/generating-overlay';
+import AnimatedGenerateButton from '@/components/ui/animated-generate-button';
 
 interface ImageProvider {
   id: string;
@@ -297,17 +298,15 @@ export function GenerateView() {
 
           {/* Generate button */}
           <div>
-            <button
-              className="btn acc"
-              onClick={handleGenerate}
+            <AnimatedGenerateButton
+              labelIdle="Generate"
+              labelActive="Generating"
+              generating={isLoading}
+              highlightHueDeg={17}
               disabled={isLoading || (!isAdmin && credits < generateCost) || providers.length === 0}
-              style={{ width: '100%', padding: 14, fontSize: 15, fontWeight: 700, letterSpacing: '.01em' }}
-            >
-              <svg style={{ width:18,height:18,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24">
-                <path d="M13 2 4 14h6l-1 8 9-12h-6z"/>
-              </svg>
-              {isLoading ? 'Generating…' : 'Generate'}
-            </button>
+              onClick={handleGenerate}
+              width="100%"
+            />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--mut)', marginTop: 8 }}>
               <span>≈ {batchCount} CR</span>
               <span>~12s · {prov?.name ?? 'no model'}</span>
