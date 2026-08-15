@@ -119,6 +119,7 @@ export function HomeView() {
   };
 
   return (
+    <>
     <div style={{ padding: 'clamp(16px,3vw,30px)', paddingBottom: 110, maxWidth: 1460, margin: '0 auto' }}>
 
       {/* ── Carousel Hero ── */}
@@ -374,5 +375,6 @@ export function HomeView() {
       `}</style>
     </div>
     <Footer />
+    </>
   );
 }
