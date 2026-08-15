@@ -61,6 +61,7 @@ export const GlowMenuBar = React.forwardRef<HTMLDivElement, MenuBarProps>(
         style={style}
         initial="initial"
         whileHover="hover"
+        whileTap="hover"
       >
         {/* Nav glow */}
         <motion.div
@@ -88,6 +89,7 @@ export const GlowMenuBar = React.forwardRef<HTMLDivElement, MenuBarProps>(
                     className="block rounded-xl overflow-visible group relative"
                     style={{ perspective: "600px" }}
                     whileHover="hover"
+                    whileTap="hover"
                     initial="initial"
                   >
                     {/* Glow bg */}
