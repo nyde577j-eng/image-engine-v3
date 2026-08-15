@@ -120,7 +120,7 @@ export function Footer() {
       </div>
 
       {/* ── Text hover effect ── */}
-      <div className="relative z-10 flex h-32 lg:h-48 -mt-4 lg:-mt-8 -mb-6 lg:-mb-8 px-4 lg:px-6">
+      <div className="relative z-10 flex -mt-4 -mb-6 px-2" style={{ height: 'clamp(60px, 15vw, 160px)' }}>
         <TextHoverEffect text="IMAGE ENGINE" />
       </div>
 
