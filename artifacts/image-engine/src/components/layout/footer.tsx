@@ -1,5 +1,6 @@
 import { Mail, ShieldCheck, Lock, FileText } from 'lucide-react';
 import { TextHoverEffect, FooterBackgroundGradient } from '@/components/ui/hover-footer';
+import { useApp } from '@/components/providers/app-provider';
 
 const LEGAL_LINKS = [
   { label: 'Privacy Policy', href: '#privacy' },
@@ -9,9 +10,18 @@ const LEGAL_LINKS = [
 
 export function Footer() {
   const year = new Date().getFullYear();
+  const { theme } = useApp();
+  const isDark = theme === 'dark';
 
   return (
-    <footer className="relative overflow-hidden border-t border-border/40 bg-background/50 backdrop-blur-sm" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
+    <footer
+      className="relative overflow-hidden border-t"
+      style={{
+        borderColor: isDark ? 'var(--dline)' : 'var(--line)',
+        background: isDark ? 'var(--dark)' : 'var(--card)',
+        paddingBottom: 'calc(80px + env(safe-area-inset-bottom))',
+      }}
+    >
 
       {/* ── Main footer content ── */}
       <div className="relative z-10 mx-auto max-w-[1600px] px-6 pt-14 pb-4">
