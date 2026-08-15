@@ -1,64 +1,131 @@
-import { ShieldCheck, Lock } from 'lucide-react';
-import { useApp } from '@/components/providers/app-provider';
-import { useEffect, useRef } from 'react';
+import { Mail, ShieldCheck, Lock, FileText } from 'lucide-react';
+import { TextHoverEffect, FooterBackgroundGradient } from '@/components/ui/hover-footer';
 
-function AdBanner728() {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!ref.current) return;
-    ref.current.innerHTML = '';
-
-    const s1 = document.createElement('script');
-    s1.innerHTML = `atOptions = {'key':'449140387cd4430b4584358a23c87848','format':'iframe','height':90,'width':728,'params':{}};`;
-    const s2 = document.createElement('script');
-    s2.src = 'https://www.highperformanceformat.com/449140387cd4430b4584358a23c87848/invoke.js';
-    s2.async = true;
-    s2.setAttribute('data-cfasync', 'false');
-
-    ref.current.appendChild(s1);
-    ref.current.appendChild(s2);
-  }, []);
-
-  return <div ref={ref} className="flex items-center justify-center overflow-hidden ad-responsive ad-728" />;
-}
+const LEGAL_LINKS = [
+  { label: 'Privacy Policy', href: '#privacy' },
+  { label: 'Terms of Use',   href: '#terms'   },
+  { label: 'Cookie Policy',  href: '#cookies' },
+];
 
 export function Footer() {
   const year = new Date().getFullYear();
-  const { activeView } = useApp();
-  const isAdmin = activeView === 'admin';
 
   return (
-    <footer className={`animate-fade-in border-t border-border/50 bg-background/50 backdrop-blur-sm ${!isAdmin ? 'footer-has-ad' : ''}`}>
-      {/* إعلان 728x90 — مخفي في الأدمن */}
-      {!isAdmin && (
-        <div className="ad-slot">
-          <AdBanner728 />
-        </div>
-      )}
+    <footer className="relative overflow-hidden border-t border-border/40 bg-background/50 backdrop-blur-sm">
 
-      <div className="px-4 py-3">
-        <div className="mx-auto flex max-w-[1600px] flex-col items-center justify-between gap-2 sm:flex-row">
-          <p className="text-[11px] text-muted-foreground">
-            © {year} Image Engine. All rights reserved.
-          </p>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-              <Lock className="h-3 w-3 text-success" />
-              SSL Secured
-            </span>
-            <span className="h-3 w-px bg-border" />
-            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-              <ShieldCheck className="h-3 w-3 text-success" />
-              Data Protected
-            </span>
-            <span className="h-3 w-px bg-border" />
-            <span className="text-[11px] text-muted-foreground">
-              Powered by AI
-            </span>
+      {/* ── Main footer content ── */}
+      <div className="relative z-10 mx-auto max-w-[1600px] px-6 pt-14 pb-4">
+
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-3 pb-12">
+
+          {/* Brand */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <span style={{
+                width: 32, height: 32, borderRadius: 9,
+                background: '#ff4d1f', display: 'grid', placeItems: 'center',
+                flexShrink: 0,
+              }}>
+                <svg style={{ width: 16, height: 16, fill: '#fff' }} viewBox="0 0 24 24">
+                  <path d="M13 2 4 14h6l-1 8 9-12h-6z"/>
+                </svg>
+              </span>
+              <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.02em' }}>
+                Image Engine
+              </span>
+            </div>
+            <p style={{ fontSize: 13.5, color: 'var(--mut)', lineHeight: 1.7, maxWidth: 280 }}>
+              One workspace for images, video, voice and conversation.
+              Powered by the world's best AI models.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ok)', flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--mut)', letterSpacing: '.06em' }}>
+                ALL SYSTEMS OPERATIONAL
+              </span>
+            </div>
+          </div>
+
+          {/* Legal */}
+          <div className="flex flex-col gap-4">
+            <h4 style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--mut)' }}>
+              Legal
+            </h4>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {LEGAL_LINKS.map(link => (
+                <li key={link.label}>
+                  <a
+                    href={link.href}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 7,
+                      fontSize: 13.5, color: 'var(--mut)', textDecoration: 'none',
+                      transition: 'color .15s',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ink)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--mut)'; }}
+                  >
+                    <FileText style={{ width: 14, height: 14, flexShrink: 0 }} />
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Contact */}
+          <div className="flex flex-col gap-4">
+            <h4 style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--mut)' }}>
+              Contact
+            </h4>
+            <a
+              href="mailto:joogamil63@gmail.com"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                fontSize: 13.5, color: 'var(--mut)', textDecoration: 'none',
+                transition: 'color .15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = '#ff4d1f'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--mut)'; }}
+            >
+              <Mail style={{ width: 15, height: 15, flexShrink: 0 }} />
+              joogamil63@gmail.com
+            </a>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: 'var(--mut)' }}>
+                <Lock style={{ width: 12, height: 12 }} />
+                SSL Secured
+              </span>
+              <span style={{ width: 1, height: 12, background: 'var(--line2)' }} />
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: 'var(--mut)' }}>
+                <ShieldCheck style={{ width: 12, height: 12 }} />
+                Data Protected
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* Divider */}
+        <div style={{ height: 1, background: 'var(--line)', margin: '0 0 16px' }} />
+
+        {/* Bottom bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <p style={{ fontSize: 11.5, color: 'var(--mut)', fontFamily: 'var(--mono)' }}>
+            © {year} Image Engine. All rights reserved.
+          </p>
+          <p style={{ fontSize: 11.5, color: 'var(--mut)', fontFamily: 'var(--mono)' }}>
+            Powered by AI · Free to use
+          </p>
+        </div>
       </div>
+
+      {/* ── Text hover effect ── */}
+      <div className="relative z-10 hidden lg:flex h-48 -mt-8 -mb-8 px-6">
+        <TextHoverEffect text="IMAGE ENGINE" />
+      </div>
+
+      {/* ── Background gradient ── */}
+      <FooterBackgroundGradient />
     </footer>
   );
 }
