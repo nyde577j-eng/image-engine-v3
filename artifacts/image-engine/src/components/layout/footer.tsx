@@ -18,7 +18,7 @@ export function Footer() {
       className="relative overflow-hidden border-t"
       style={{
         borderColor: isDark ? 'var(--dline)' : 'var(--line)',
-        background: isDark ? 'var(--dark)' : 'var(--card)',
+        background: isDark ? '#141310' : 'transparent',
         paddingBottom: 'calc(80px + env(safe-area-inset-bottom))',
       }}
     >
