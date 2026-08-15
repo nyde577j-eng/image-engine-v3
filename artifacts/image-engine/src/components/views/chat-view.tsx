@@ -133,11 +133,25 @@ function getUserKey(): string {
   return k;
 }
 
-/* ─── Simple markdown renderer ───────────────────────────────────── */
+/* ─── Simple markdown renderer — XSS-safe ────────────────────────── */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function renderMd(text: string): React.ReactNode {
   return text.split('\n').map((line, i, arr) => {
-    const bold = line.replace(/\*\*(.+?)\*\*/g, (_, m) => `<b>${m}</b>`);
-    const code = bold.replace(/`(.+?)`/g, (_, m) => `<code style="background:rgba(0,0,0,.12);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:12px">${m}</code>`);
+    const escaped = escapeHtml(line);
+    // Bold: **text**
+    const bold = escaped.replace(/\*\*(.+?)\*\*/g, (_: string, m: string) => `<b>${m}</b>`);
+    // Inline code: `text`
+    const code = bold.replace(/`(.+?)`/g, (_: string, m: string) =>
+      `<code style="background:rgba(0,0,0,.12);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:12px">${m}</code>`
+    );
     return (
       <span key={i}>
         <span dangerouslySetInnerHTML={{ __html: code }} />
