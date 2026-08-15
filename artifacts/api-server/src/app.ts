@@ -211,7 +211,8 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 
   // CORS error
   if (err instanceof Error && err.message.startsWith("CORS:")) {
-    return res.status(403).json({ error: "Forbidden" });
+    res.status(403).json({ error: "Forbidden" });
+    return;
   }
 
   res.status(status).json({ error: message });
