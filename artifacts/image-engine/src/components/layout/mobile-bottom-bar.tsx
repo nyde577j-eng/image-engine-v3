@@ -1,6 +1,13 @@
 import { useState } from 'react';
+import React from 'react';
 import { useApp } from '@/components/providers/app-provider';
 import type { ViewId } from '@/lib/types';
+import { GlowMenuBar } from '@/components/ui/glow-menu';
+import {
+  Home, Sparkles, Images, MessageSquare,
+  Wand2, FolderOpen, History, Boxes,
+  Workflow, Film, AudioLines, Code2, Settings, Shield,
+} from 'lucide-react';
 
 const BB_ITEMS = [
   {
@@ -45,24 +52,23 @@ const BB_ITEMS = [
   },
 ];
 
-const MORE_ITEMS: { id: ViewId; label: string }[] = [
-  { id: 'generate',    label: 'Generate' },
-  { id: 'editor',      label: 'Editor' },
-  { id: 'collections', label: 'Collections' },
-  { id: 'history',     label: 'History' },
-  { id: 'models',      label: 'Models' },
-  { id: 'workflows',   label: 'Workflows' },
-  { id: 'videos',      label: 'Videos' },
-  { id: 'tts',         label: 'Voice' },
-  { id: 'api',         label: 'API' },
-  { id: 'settings',    label: 'Settings' },
-  { id: 'admin',       label: 'Admin' },
+const MORE_ITEMS: { id: ViewId; label: string; gradient: string; iconColor: string; icon: React.FC<{ className?: string }> }[] = [
+  { id: 'generate',    label: 'Generate',    icon: Sparkles,    iconColor: 'text-orange-500',  gradient: 'radial-gradient(circle, rgba(255,77,31,0.18) 0%, rgba(255,77,31,0.06) 50%, transparent 100%)' },
+  { id: 'editor',      label: 'Editor',      icon: Wand2,       iconColor: 'text-purple-500',  gradient: 'radial-gradient(circle, rgba(168,85,247,0.18) 0%, rgba(168,85,247,0.06) 50%, transparent 100%)' },
+  { id: 'collections', label: 'Collections', icon: FolderOpen,  iconColor: 'text-yellow-500',  gradient: 'radial-gradient(circle, rgba(234,179,8,0.18) 0%, rgba(234,179,8,0.06) 50%, transparent 100%)' },
+  { id: 'history',     label: 'History',     icon: History,     iconColor: 'text-slate-400',   gradient: 'radial-gradient(circle, rgba(148,163,184,0.18) 0%, rgba(148,163,184,0.06) 50%, transparent 100%)' },
+  { id: 'models',      label: 'Models',      icon: Boxes,       iconColor: 'text-cyan-500',    gradient: 'radial-gradient(circle, rgba(6,182,212,0.18) 0%, rgba(6,182,212,0.06) 50%, transparent 100%)' },
+  { id: 'workflows',   label: 'Workflows',   icon: Workflow,    iconColor: 'text-teal-500',    gradient: 'radial-gradient(circle, rgba(20,184,166,0.18) 0%, rgba(20,184,166,0.06) 50%, transparent 100%)' },
+  { id: 'videos',      label: 'Videos',      icon: Film,        iconColor: 'text-red-500',     gradient: 'radial-gradient(circle, rgba(239,68,68,0.18) 0%, rgba(239,68,68,0.06) 50%, transparent 100%)' },
+  { id: 'tts',         label: 'Voice',       icon: AudioLines,  iconColor: 'text-blue-500',    gradient: 'radial-gradient(circle, rgba(59,130,246,0.18) 0%, rgba(59,130,246,0.06) 50%, transparent 100%)' },
+  { id: 'api',         label: 'API',         icon: Code2,       iconColor: 'text-green-500',   gradient: 'radial-gradient(circle, rgba(34,197,94,0.18) 0%, rgba(34,197,94,0.06) 50%, transparent 100%)' },
+  { id: 'settings',    label: 'Settings',    icon: Settings,    iconColor: 'text-zinc-400',    gradient: 'radial-gradient(circle, rgba(161,161,170,0.18) 0%, rgba(161,161,170,0.06) 50%, transparent 100%)' },
+  { id: 'admin',       label: 'Admin',       icon: Shield,      iconColor: 'text-red-500',     gradient: 'radial-gradient(circle, rgba(239,68,68,0.18) 0%, rgba(239,68,68,0.06) 50%, transparent 100%)' },
 ];
 
 export function MobileBottomBar() {
   const { activeView, setActiveView } = useApp();
   const [sheetOpen, setSheetOpen] = useState(false);
-
   return (
     <>
       {/* Bottom bar */}
@@ -144,23 +150,19 @@ export function MobileBottomBar() {
             {/* Grab handle */}
             <div style={{ width:44,height:5,borderRadius:99,background:'var(--line2)',margin:'2px auto 16px' }} />
             <h3 style={{ fontSize:16,fontWeight:700,marginBottom:14 }}>All modules</h3>
-            <div style={{ display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10 }}>
-              {MORE_ITEMS.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => { setActiveView(item.id); setSheetOpen(false); }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    border: '1px solid var(--line)', borderRadius: 14,
-                    background: 'var(--panel)', padding: '13px 14px',
-                    fontFamily: 'var(--ui)', fontSize: 14, cursor: 'pointer',
-                    color: 'var(--ink)', textAlign: 'left',
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+            <GlowMenuBar
+              items={MORE_ITEMS.map(item => ({
+                ...item,
+                href: '#',
+              }))}
+              activeItem={MORE_ITEMS.find(i => i.id === activeView)?.label}
+              onItemClick={(label) => {
+                const item = MORE_ITEMS.find(i => i.label === label);
+                if (item) { setActiveView(item.id); setSheetOpen(false); }
+              }}
+              className="w-full"
+              style={{ borderRadius: 16 }}
+            />
           </div>
         </>
       )}
