@@ -19,7 +19,7 @@ export function Footer() {
       style={{
         borderColor: isDark ? 'var(--dline)' : 'var(--line)',
         background: isDark ? '#141310' : 'transparent',
-        paddingBottom: 'calc(80px + env(safe-area-inset-bottom))',
+        paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
       }}
     >
 
