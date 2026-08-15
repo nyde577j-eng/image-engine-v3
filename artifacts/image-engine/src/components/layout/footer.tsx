@@ -11,7 +11,7 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="relative overflow-hidden border-t border-border/40 bg-background/50 backdrop-blur-sm">
+    <footer className="relative overflow-hidden border-t border-border/40 bg-background/50 backdrop-blur-sm" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
 
       {/* ── Main footer content ── */}
       <div className="relative z-10 mx-auto max-w-[1600px] px-6 pt-14 pb-4">
@@ -120,7 +120,7 @@ export function Footer() {
       </div>
 
       {/* ── Text hover effect ── */}
-      <div className="relative z-10 flex -mt-4 -mb-6 px-2" style={{ height: 'clamp(60px, 15vw, 160px)' }}>
+      <div className="relative z-10 flex px-4" style={{ height: 80, marginTop: 8, marginBottom: 16 }}>
         <TextHoverEffect text="IMAGE ENGINE" />
       </div>
 
