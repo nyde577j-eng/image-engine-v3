@@ -3,7 +3,6 @@ import { AppProvider, useApp } from '@/components/providers/app-provider';
 import { AdminAuthProvider } from '@/components/providers/admin-auth-provider';
 import { Rail } from './rail';
 import { TopBar } from './topbar';
-import { Footer } from './footer';
 import { ViewRouter } from '@/components/views/view-router';
 import { CommandPalette } from '@/components/ui/command-palette';
 import { MobileBottomBar } from './mobile-bottom-bar';
@@ -101,7 +100,6 @@ function ShellContent() {
           <main style={{ flex: 1 }}>
             <ViewRouter />
           </main>
-          <Footer />
         </div>
       </div>
 

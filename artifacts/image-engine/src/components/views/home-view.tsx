@@ -3,6 +3,7 @@ import { useApp } from '@/components/providers/app-provider';
 import { SAMPLE_IMAGES } from '@/lib/mock-data';
 import { ImageCarouselHero } from '@/components/ui/image-carousel-hero';
 import { FeatureCard, AnimatedContainer } from '@/components/ui/grid-feature-cards';
+import { Footer } from '@/components/layout/footer';
 import {
   Sparkles, Pencil, MessageSquare, Mic, Film, Workflow,
 } from 'lucide-react';
@@ -372,5 +373,6 @@ export function HomeView() {
         @keyframes pulse-dot{0%,100%{box-shadow:0 0 0 0 rgba(23,143,95,.4)}50%{box-shadow:0 0 0 6px rgba(23,143,95,0)}}
       `}</style>
     </div>
+    <Footer />
   );
 }
