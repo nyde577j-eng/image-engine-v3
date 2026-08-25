@@ -118,6 +118,9 @@ const ALLOWED_ORIGINS = [
   "https://www.remixofficial.online",
 ];
 
+const configuredPublicUrl = process.env["PUBLIC_URL"]?.replace(/\/$/, "");
+if (configuredPublicUrl) ALLOWED_ORIGINS.push(configuredPublicUrl);
+
 // في Development نسمح بـ localhost
 if (process.env["NODE_ENV"] !== "production") {
   ALLOWED_ORIGINS.push("http://localhost:5173", "http://localhost:3000");
@@ -129,6 +132,9 @@ app.use(
       // السيرفر نفسه (SSR / same-origin) أو requests بدون origin (mobile apps, curl)
       if (!origin) return callback(null, true);
       if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+      if (/^https:\/\/[a-z0-9-]+\.up\.railway\.app$/i.test(origin)) {
+        return callback(null, true);
+      }
       callback(new Error(`CORS: origin '${origin}' not allowed`));
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
