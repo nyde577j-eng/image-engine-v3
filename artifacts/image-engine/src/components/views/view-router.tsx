@@ -14,6 +14,7 @@ import { AdminView }       from './admin/admin-view';
 import { ChatView }        from './chat-view';
 import { VideosView }      from './videos-view';
 import { TtsView }         from './tts-view';
+import NotFound            from '@/pages/not-found';
 import type { ViewId } from '@/lib/types';
 
 const VIEWS: Record<ViewId, React.ComponentType> = {
@@ -35,7 +36,7 @@ const VIEWS: Record<ViewId, React.ComponentType> = {
 
 export function ViewRouter() {
   const { activeView } = useApp();
-  const View = VIEWS[activeView] ?? HomeView;
+  const View = activeView ? (VIEWS[activeView] ?? NotFound) : NotFound;
 
   return (
     <div
@@ -44,7 +45,7 @@ export function ViewRouter() {
     >
       <AnimatePresence mode="wait">
         <motion.div
-          key={activeView}
+          key={activeView ?? '404'}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
