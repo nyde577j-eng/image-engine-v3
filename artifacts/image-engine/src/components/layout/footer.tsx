@@ -41,7 +41,7 @@ export function Footer() {
                 </svg>
               </span>
               <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.02em' }}>
-                Image Engine
+                Nova AI
               </span>
             </div>
             <p style={{ fontSize: 13.5, color: 'var(--mut)', lineHeight: 1.7, maxWidth: 280 }}>
@@ -121,7 +121,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <p style={{ fontSize: 11.5, color: 'var(--mut)', fontFamily: 'var(--mono)' }}>
-            © {year} Image Engine. All rights reserved.
+            © {year} Nova AI. All rights reserved.
           </p>
           <p style={{ fontSize: 11.5, color: 'var(--mut)', fontFamily: 'var(--mono)' }}>
             Powered by AI · Free to use
@@ -131,7 +131,7 @@ export function Footer() {
 
       {/* ── Text hover effect ── */}
       <div className="relative z-10 flex px-4" style={{ height: 80, marginTop: 8, marginBottom: 16 }}>
-        <TextHoverEffect text="IMAGE ENGINE" />
+        <TextHoverEffect text="NOVA AI" />
       </div>
 
       {/* ── Background gradient ── */}
