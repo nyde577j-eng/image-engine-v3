@@ -1,13 +1,47 @@
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import type { ViewId } from '@/lib/types';
 import type { Locale } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 
 const CREDITS_KEY = 'ie_credits';
 const AVATAR_KEY = 'ie_avatar';
-const VIEW_KEY = 'ie_active_view';
 const DEFAULT_INITIAL_CREDITS = 100;
+
+const PATH_TO_VIEW: Record<string, ViewId> = {
+  '/':            'home',
+  '/generate':    'generate',
+  '/editor':      'editor',
+  '/gallery':     'gallery',
+  '/history':     'history',
+  '/collections': 'collections',
+  '/workflows':   'workflows',
+  '/models':      'models',
+  '/api':         'api',
+  '/chat':        'chat',
+  '/settings':    'settings',
+  '/admin':       'admin',
+  '/videos':      'videos',
+  '/tts':         'tts',
+};
+
+const VIEW_TO_PATH: Record<ViewId, string> = {
+  home:        '/',
+  generate:    '/generate',
+  editor:      '/editor',
+  gallery:     '/gallery',
+  history:     '/history',
+  collections: '/collections',
+  workflows:   '/workflows',
+  models:      '/models',
+  api:         '/api',
+  chat:        '/chat',
+  settings:    '/settings',
+  admin:       '/admin',
+  videos:      '/videos',
+  tts:         '/tts',
+};
 
 interface AppContextValue {
   activeView: ViewId;
@@ -58,16 +92,14 @@ export function useApp() {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [activeView, setActiveViewState] = useState<ViewId>(() => {
-    const stored = window.localStorage.getItem(VIEW_KEY) as ViewId | null;
-    const valid: ViewId[] = ['home','generate','editor','gallery','history','collections','workflows','models','api','chat','settings','admin','videos','tts'];
-    return stored && valid.includes(stored) ? stored : 'home';
-  });
+  const [location, navigate] = useLocation();
+
+  // URL is the source of truth — map current path to a ViewId
+  const activeView: ViewId = PATH_TO_VIEW[location] ?? 'home';
 
   const setActiveView = useCallback((v: ViewId) => {
-    setActiveViewState(v);
-    window.localStorage.setItem(VIEW_KEY, v);
-  }, []);
+    navigate(VIEW_TO_PATH[v]);
+  }, [navigate]);
   const [prompt, setPrompt] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState('Lumen-XL v2.1');
