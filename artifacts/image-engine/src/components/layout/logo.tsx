@@ -60,12 +60,13 @@ export function BrandLogo({
               color: forceLight ? '#fff' : 'var(--ink)',
               letterSpacing: '-0.04em',
               whiteSpace: 'nowrap',
+              lineHeight: 1,
             }}
           >
             Nova&nbsp;
           </motion.span>
 
-          {/* "AI" مع animation */}
+          {/* الكلمة المتحركة */}
           <TextRotate
             texts={['AI', 'Studio', 'Vision', 'Create']}
             rotationInterval={2800}
@@ -76,16 +77,15 @@ export function BrandLogo({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '-120%', opacity: 0 }}
             transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-            splitLevelClassName="overflow-hidden pb-0.5"
-            mainClassName={cn(
-              'px-1.5 py-0.5 rounded-md text-white overflow-hidden'
-            )}
+            splitLevelClassName="overflow-hidden"
+            mainClassName="rounded-md text-white overflow-hidden"
             style={{
               fontSize,
               fontWeight: 700,
               letterSpacing: '-0.04em',
               background: '#ff4d1f',
-              lineHeight: 1.4,
+              lineHeight: 1,
+              padding: '2px 5px',
             }}
           />
         </motion.div>
