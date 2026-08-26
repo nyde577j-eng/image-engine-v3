@@ -1,11 +1,11 @@
 {
-  "name": "Image Engine Studio",
-  "short_name": "Image Engine",
-  "description": "منصة تحرير وتوليد الصور بالذكاء الاصطناعي",
+  "name": "Nova AI",
+  "short_name": "Nova AI",
+  "description": "One workspace for images, video, voice and conversation.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#F5C800",
+  "background_color": "#0d0d0d",
+  "theme_color": "#ff4d1f",
   "icons": [
     {
       "src": "/logo.png",
