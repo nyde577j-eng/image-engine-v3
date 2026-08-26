@@ -1,6 +1,7 @@
 import { useApp } from '@/components/providers/app-provider';
 import { useAdminAuth } from '@/components/providers/admin-auth-provider';
 import { useCommandPalette } from '@/components/ui/command-palette';
+import { BrandLogo } from '@/components/layout/logo';
 import type { ViewId } from '@/lib/types';
 
 const VIEW_TITLES: Record<ViewId, string> = {
@@ -82,16 +83,9 @@ export function TopBar() {
       `}</style>
 
       <header className="topbar">
-        {/* Title */}
+        {/* Brand */}
         <div className="topbar-title">
-          <span className="topbar-label">
-            IMAGE ENGINE
-            {isAdminMode && (
-              <span style={{ marginLeft:6, background:'var(--err)', color:'#fff', padding:'1px 6px', borderRadius:4, fontSize:9 }}>
-                ADMIN
-              </span>
-            )}
-          </span>
+          <BrandLogo size="sm" />
           <h1 className="topbar-heading">{activeView ? (titles[activeView] ?? activeView) : '404'}</h1>
         </div>
 

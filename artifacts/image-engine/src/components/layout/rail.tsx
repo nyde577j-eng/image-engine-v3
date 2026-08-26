@@ -49,12 +49,13 @@ const LogoMark = ({ onClick }: { onClick: () => void }) => (
       marginBottom: 8, flexShrink: 0,
       border: 'none', cursor: 'pointer',
       boxShadow: '0 6px 18px rgba(255,77,31,.4)',
+      fontWeight: 700, fontSize: 20,
+      fontFamily: 'var(--ui)',
+      letterSpacing: '-0.04em',
     }}
-    title="Studio Home"
+    title="Nova AI — Home"
   >
-    <svg style={{ width: 22, height: 22, fill: 'currentColor' }} viewBox="0 0 24 24">
-      <path d="M13 2 4 14h6l-1 8 9-12h-6z"/>
-    </svg>
+    N
   </button>
 );
 
