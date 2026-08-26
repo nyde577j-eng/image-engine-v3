@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
-
-const LOGO_ICON = '/logo.png';
+import { LayoutGroup, motion } from 'framer-motion';
+import { TextRotate } from '@/components/ui/text-rotate';
 
 type BrandLogoProps = {
   collapsed?: boolean;
@@ -9,12 +9,11 @@ type BrandLogoProps = {
   forceLight?: boolean;
 };
 
-// الارتفاع لكل حجم — العرض يتحسب أوتوماتيك من نسبة الصورة
-const ICON_HEIGHT: Record<NonNullable<BrandLogoProps['size']>, number> = {
-  sm: 28,
-  md: 36,
-  lg: 48,
-  xl: 60,
+const SIZE_PX: Record<NonNullable<BrandLogoProps['size']>, number> = {
+  sm: 14,
+  md: 16,
+  lg: 20,
+  xl: 22,
 };
 
 export function BrandLogo({
@@ -23,32 +22,74 @@ export function BrandLogo({
   size = 'md',
   forceLight = false,
 }: BrandLogoProps) {
-  const h = ICON_HEIGHT[size];
+  const fontSize = SIZE_PX[size];
+
+  if (collapsed) {
+    /* لما الـ sidebar مغلق — نعرض الحرف الأول بس */
+    return (
+      <div className={cn('flex shrink-0 items-center justify-center', className)}>
+        <span
+          style={{
+            fontSize: fontSize + 4,
+            fontWeight: 700,
+            color: forceLight ? '#fff' : 'var(--ink)',
+            lineHeight: 1,
+            letterSpacing: '-0.04em',
+          }}
+        >
+          N
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <div className={cn('flex shrink-0 items-center', className)}>
-      {collapsed ? (
-        // لما الـ sidebar مغلق — نعرض الأيقونة بس (الجزء الأيسر من اللوجو)
-        <div
-          style={{ width: h, height: h, overflow: 'hidden' }}
-          className="shrink-0"
+    <div className={cn('flex shrink-0 items-center gap-1 overflow-hidden', className)}>
+      <LayoutGroup>
+        <motion.div
+          className="flex items-baseline gap-0"
+          layout
+          style={{ lineHeight: 1 }}
         >
-          <img
-            src={LOGO_ICON}
-            alt="Image Engine Studio"
-            style={{ height: h, width: 'auto', maxWidth: 'none' }}
-            className={cn(forceLight && 'brightness-110')}
+          {/* "Nova" — ثابت */}
+          <motion.span
+            layout
+            style={{
+              fontSize,
+              fontWeight: 700,
+              color: forceLight ? '#fff' : 'var(--ink)',
+              letterSpacing: '-0.04em',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Nova&nbsp;
+          </motion.span>
+
+          {/* "AI" مع animation */}
+          <TextRotate
+            texts={['AI', 'Studio', 'Vision', 'Create']}
+            rotationInterval={2800}
+            staggerFrom="last"
+            staggerDuration={0.03}
+            splitBy="characters"
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '-120%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 400 }}
+            splitLevelClassName="overflow-hidden pb-0.5"
+            mainClassName={cn(
+              'px-1.5 py-0.5 rounded-md text-white overflow-hidden'
+            )}
+            style={{
+              fontSize,
+              fontWeight: 700,
+              letterSpacing: '-0.04em',
+              background: '#ff4d1f',
+              lineHeight: 1.4,
+            }}
           />
-        </div>
-      ) : (
-        // لما مفتوح — اللوجو كامل بعرض يملأ الـ sidebar
-        <img
-          src={LOGO_ICON}
-          alt="Image Engine Studio"
-          style={{ height: h, width: 'auto', maxWidth: 224 }}
-          className={cn(forceLight && 'brightness-110')}
-        />
-      )}
+        </motion.div>
+      </LayoutGroup>
     </div>
   );
 }
