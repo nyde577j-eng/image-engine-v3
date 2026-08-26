@@ -23,7 +23,7 @@ const PATH_TO_VIEW: Record<string, ViewId> = {
   '/settings':    'settings',
   '/admin':       'admin',
   '/videos':      'videos',
-  '/tts':         'tts',
+  '/text-to-speech': 'tts',
 };
 
 const VIEW_TO_PATH: Record<ViewId, string> = {
@@ -40,7 +40,7 @@ const VIEW_TO_PATH: Record<ViewId, string> = {
   settings:    '/settings',
   admin:       '/admin',
   videos:      '/videos',
-  tts:         '/tts',
+  tts:         '/text-to-speech',
 };
 
 interface AppContextValue {
