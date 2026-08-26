@@ -197,9 +197,7 @@ function VoiceCard({ voice, selected, onSelect, playingPreviewId, onPreviewToggl
   playingPreviewId: string | null; onPreviewToggle: (id: string | null) => void;
 }) {
   const [imgErr, setImgErr] = useState(false);
-  const sampleUrl = voice.samples?.find(s => s.audio)?.audio
-    ? `/api/tts/sample-proxy?url=${encodeURIComponent(voice.samples!.find(s => s.audio)!.audio)}`
-    : null;
+  const sampleUrl = voice.samples?.find(s => s.audio)?.audio ?? null;
   const isPreviewing = playingPreviewId === voice._id;
 
   const handlePreviewClick = (e: React.MouseEvent) => {

@@ -339,33 +339,7 @@ router.get("/tts/voices", async (req, res) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   GET /api/tts/sample-proxy?url=...
-   Proxy لملفات الـ audio samples من Fish Audio
-   (الروابط المباشرة تُحجب من المتصفح — نمررها عبر الـ backend)
-═══════════════════════════════════════════════════════════════════ */
-router.get("/tts/sample-proxy", async (req, res) => {
-  const { url } = req.query as { url?: string };
-  if (!url || !url.startsWith("https://platform.r2.fish.audio/")) {
-    return res.status(400).json({ ok: false, error: "Invalid URL" });
-  }
-
-  const apiKey = await getActiveKey();
-  if (!apiKey) return res.status(503).end();
-
-  try {
-    const r = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    if (!r.ok) return res.status(r.status).end();
-
-    res.setHeader("Content-Type", r.headers.get("content-type") ?? "audio/mpeg");
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    const buf = await r.arrayBuffer();
-    return res.send(Buffer.from(buf));
-  } catch (err) {
-    return res.status(502).json({ ok: false, error: String(err) });
-  }
-});
+   POST /api/tts/test-key
    اختبار صلاحية API Key
    body: { key_value }
 ═══════════════════════════════════════════════════════════════════ */
