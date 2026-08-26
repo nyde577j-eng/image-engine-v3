@@ -3,8 +3,9 @@ import { useLocation } from 'wouter';
 
 export default function NotFound() {
   return (
-    <div className="w-full h-screen overflow-x-hidden flex justify-center items-center relative"
-      style={{ background: 'var(--bg, #fff)' }}
+    <div
+      className="w-full h-screen overflow-x-hidden flex justify-center items-center relative"
+      style={{ background: '#0d0d0d' }}
     >
       <MessageDisplay />
       <CharactersAnimation />
@@ -32,19 +33,19 @@ function MessageDisplay() {
       >
         <div
           className="text-[35px] font-semibold m-[1%]"
-          style={{ color: 'var(--ink, #000)' }}
+          style={{ color: '#f4f2ea' }}
         >
           Page Not Found
         </div>
         <div
           className="text-[80px] font-bold m-[1%]"
-          style={{ color: 'var(--ink, #000)' }}
+          style={{ color: '#f4f2ea' }}
         >
           404
         </div>
         <div
           className="text-[15px] w-1/2 min-w-[40%] text-center m-[1%]"
-          style={{ color: 'var(--mut, #555)' }}
+          style={{ color: '#938f83' }}
         >
           The page you are looking for might have been removed, had its name
           changed, or is temporarily unavailable.
@@ -56,17 +57,17 @@ function MessageDisplay() {
             onClick={() => window.history.back()}
             className="border-2 transition-all duration-300 ease-in-out px-6 py-2 h-auto text-base font-medium flex items-center gap-2 hover:scale-105"
             style={{
-              color: 'var(--ink, #000)',
-              borderColor: 'var(--ink, #000)',
+              color: '#f4f2ea',
+              borderColor: '#f4f2ea',
               background: 'transparent',
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink, #000)';
-              (e.currentTarget as HTMLButtonElement).style.color = 'var(--bg, #fff)';
+              (e.currentTarget as HTMLButtonElement).style.background = '#f4f2ea';
+              (e.currentTarget as HTMLButtonElement).style.color = '#0d0d0d';
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-              (e.currentTarget as HTMLButtonElement).style.color = 'var(--ink, #000)';
+              (e.currentTarget as HTMLButtonElement).style.color = '#f4f2ea';
             }}
           >
             <svg
@@ -90,8 +91,8 @@ function MessageDisplay() {
             onClick={() => navigate('/')}
             className="transition-all duration-300 ease-in-out px-6 py-2 h-auto text-base font-medium flex items-center gap-2 hover:scale-105"
             style={{
-              background: 'var(--ink, #000)',
-              color: 'var(--bg, #fff)',
+              background: '#f4f2ea',
+              color: '#0d0d0d',
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLButtonElement).style.opacity = '0.85';
@@ -249,11 +250,8 @@ function CircleAnimation() {
       const distanceX = canvas.width / 80;
       const growthRate = canvas.width / 1000;
 
-      // Use CSS variable colour so it adapts to light/dark
-      const fillColor = getComputedStyle(document.documentElement)
-        .getPropertyValue('--ink').trim() || '#000000';
-
-      ctx.fillStyle = fillColor || '#000000';
+      // Always white circles on dark background
+      ctx.fillStyle = '#ffffff';
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       circulosRef.current.forEach((c) => {
