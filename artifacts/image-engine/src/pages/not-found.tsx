@@ -7,11 +7,8 @@ export default function NotFound() {
       className="w-full h-screen overflow-hidden flex justify-center items-center relative"
       style={{ background: '#0d0d0d' }}
     >
-      {/* Canvas behind everything */}
       <CircleAnimation />
-      {/* Stick figures above canvas but below text */}
       <CharactersAnimation />
-      {/* Text always on top */}
       <MessageDisplay />
     </div>
   );
@@ -117,63 +114,58 @@ function MessageDisplay() {
   );
 }
 
-/* ── 2. Characters Animation — inline SVGs (no external URLs) ────── */
-// Stick figures as inline SVG strings to avoid CSP/CORS issues
-const STICK_SVGS = [
-  // stick0 — simple falling figure
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200" fill="none" stroke="#f4f2ea" stroke-width="4" stroke-linecap="round">
-    <circle cx="50" cy="20" r="14" fill="#f4f2ea"/>
-    <line x1="50" y1="34" x2="50" y2="110"/>
-    <line x1="50" y1="60" x2="20" y2="90"/>
-    <line x1="50" y1="60" x2="80" y2="90"/>
-    <line x1="50" y1="110" x2="25" y2="160"/>
-    <line x1="50" y1="110" x2="75" y2="160"/>
+/* ── 2. Floating Icons Animation ─────────────────────────────────── */
+// Professional icons matching the AI/creative theme of the app
+// Each floats across once from right to left — no infinite spinning
+const ICON_SVGS = [
+  // Sparkles / AI generation
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f4f2ea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>
+    <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>
   </svg>`,
-  // stick1 — running figure
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200" fill="none" stroke="#f4f2ea" stroke-width="4" stroke-linecap="round">
-    <circle cx="50" cy="20" r="14" fill="#f4f2ea"/>
-    <line x1="50" y1="34" x2="50" y2="110"/>
-    <line x1="50" y1="55" x2="15" y2="75"/>
-    <line x1="50" y1="55" x2="82" y2="65"/>
-    <line x1="50" y1="110" x2="20" y2="165"/>
-    <line x1="50" y1="110" x2="80" y2="150"/>
+  // Image frame
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f4f2ea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <circle cx="9" cy="9" r="2"/>
+    <path d="m21 15-5-5L5 21"/>
   </svg>`,
-  // stick2 — arms up figure
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200" fill="none" stroke="#f4f2ea" stroke-width="4" stroke-linecap="round">
-    <circle cx="50" cy="20" r="14" fill="#f4f2ea"/>
-    <line x1="50" y1="34" x2="50" y2="110"/>
-    <line x1="50" y1="55" x2="10" y2="35"/>
-    <line x1="50" y1="55" x2="90" y2="35"/>
-    <line x1="50" y1="110" x2="30" y2="170"/>
-    <line x1="50" y1="110" x2="70" y2="170"/>
+  // Wand / editor
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f4f2ea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 4l5 5L8 21l-5-1 1-5z"/>
+    <path d="M13 6l3 3"/>
+    <path d="M19 2l1 1-1 1-1-1z"/>
   </svg>`,
-  // stick3 — standing figure (bottom, no movement)
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200" fill="none" stroke="#f4f2ea" stroke-width="4" stroke-linecap="round">
-    <circle cx="50" cy="20" r="14" fill="#f4f2ea"/>
-    <line x1="50" y1="34" x2="50" y2="110"/>
-    <line x1="50" y1="60" x2="20" y2="80"/>
-    <line x1="50" y1="60" x2="80" y2="80"/>
-    <line x1="50" y1="110" x2="35" y2="170"/>
-    <line x1="50" y1="110" x2="65" y2="170"/>
+  // CPU / model
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f4f2ea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="7" y="7" width="10" height="10" rx="1"/>
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M7 2v3M17 2v3M7 19v3M17 19v3M2 7h3M2 17h3M19 7h3M19 17h3"/>
+  </svg>`,
+  // Chat bubble
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f4f2ea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1.1L3 20l1.1-5.3A8.5 8.5 0 1 1 21 11.5z"/>
+  </svg>`,
+  // Film / video
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f4f2ea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="5" width="18" height="14" rx="2"/>
+    <path d="M7 5v14M17 5v14M3 10h4M3 14h4M17 10h4M17 14h4"/>
   </svg>`,
 ];
 
-type StickFigure = {
-  top?: string;
-  bottom?: string;
+type FloatingIcon = {
+  top: string;
   svgIndex: number;
-  transform?: string;
   speedX: number;
-  speedRotation?: number;
+  size: number;
+  opacity: number;
 };
 
-const STICK_FIGURES: StickFigure[] = [
-  { top: '0%',   svgIndex: 0, transform: 'rotateZ(-90deg)', speedX: 1500 },
-  { top: '10%',  svgIndex: 1, speedX: 3000, speedRotation: 2000 },
-  { top: '20%',  svgIndex: 2, speedX: 5000, speedRotation: 1000 },
-  { top: '25%',  svgIndex: 0, speedX: 2500, speedRotation: 1500 },
-  { top: '35%',  svgIndex: 0, speedX: 2000, speedRotation: 300 },
-  { bottom: '5%', svgIndex: 3, speedX: 0 },
+const FLOATING_ICONS: FloatingIcon[] = [
+  { top: '8%',  svgIndex: 0, speedX: 6000,  size: 36, opacity: 0.25 },
+  { top: '22%', svgIndex: 1, speedX: 9000,  size: 44, opacity: 0.20 },
+  { top: '38%', svgIndex: 2, speedX: 7500,  size: 32, opacity: 0.22 },
+  { top: '55%', svgIndex: 3, speedX: 10000, size: 40, opacity: 0.18 },
+  { top: '70%', svgIndex: 4, speedX: 8000,  size: 36, opacity: 0.20 },
+  { top: '82%', svgIndex: 5, speedX: 11000, size: 42, opacity: 0.16 },
 ];
 
 function CharactersAnimation() {
@@ -184,34 +176,23 @@ function CharactersAnimation() {
     if (!container) return;
     container.innerHTML = '';
 
-    STICK_FIGURES.forEach((figure, index) => {
+    FLOATING_ICONS.forEach((icon) => {
       const wrapper = document.createElement('div');
       wrapper.style.position = 'absolute';
-      wrapper.style.width = '80px';
-      wrapper.style.height = '160px';
-      if (figure.top)    wrapper.style.top    = figure.top;
-      if (figure.bottom) wrapper.style.bottom = figure.bottom;
-      if (figure.transform) wrapper.style.transform = figure.transform;
-      wrapper.innerHTML = STICK_SVGS[figure.svgIndex];
+      wrapper.style.width  = `${icon.size}px`;
+      wrapper.style.height = `${icon.size}px`;
+      wrapper.style.top    = icon.top;
+      wrapper.style.opacity = String(icon.opacity);
+      wrapper.innerHTML = ICON_SVGS[icon.svgIndex];
       const svg = wrapper.querySelector('svg');
       if (svg) { svg.style.width = '100%'; svg.style.height = '100%'; }
       container.appendChild(wrapper);
 
-      if (index === 5) return;
-
+      // Slide once from right to left — no rotation, no infinite loop
       wrapper.animate(
-        [{ left: '110%' }, { left: '-15%' }],
-        { duration: figure.speedX, easing: 'linear', fill: 'forwards' },
+        [{ left: '105%' }, { left: '-8%' }],
+        { duration: icon.speedX, easing: 'linear', fill: 'forwards' },
       );
-
-      if (index === 0) return;
-
-      if (figure.speedRotation) {
-        wrapper.animate(
-          [{ transform: 'rotate(0deg)' }, { transform: 'rotate(-360deg)' }],
-          { duration: figure.speedRotation, iterations: Infinity, easing: 'linear' },
-        );
-      }
     });
 
     return () => { container.innerHTML = ''; };
