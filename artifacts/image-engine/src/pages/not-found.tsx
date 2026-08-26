@@ -37,8 +37,8 @@ function MessageDisplay() {
         <div
           className="text-[35px] font-semibold m-[1%]"
           style={{
-            color: '#f4f2ea',
-            textShadow: '0 0 20px #0d0d0d, 0 0 40px #0d0d0d, 2px 2px 8px #0d0d0d',
+            color: '#1a1a1a',
+            textShadow: '0 0 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.6)',
           }}
         >
           Page Not Found
@@ -47,7 +47,7 @@ function MessageDisplay() {
           className="text-[80px] font-bold m-[1%] leading-none"
           style={{
             color: '#ff4d1f',
-            textShadow: '0 0 30px rgba(255,77,31,0.5), 0 0 60px #0d0d0d, 2px 2px 12px #0d0d0d',
+            textShadow: '0 0 30px rgba(255,77,31,0.4)',
           }}
         >
           404
@@ -55,8 +55,8 @@ function MessageDisplay() {
         <div
           className="text-[15px] w-1/2 min-w-[280px] text-center m-[1%] px-2"
           style={{
-            color: '#938f83',
-            textShadow: '0 0 16px #0d0d0d, 1px 1px 6px #0d0d0d',
+            color: '#2a2a2a',
+            textShadow: '0 0 16px rgba(255,255,255,0.8)',
           }}
         >
           The page you are looking for might have been removed, had its name
