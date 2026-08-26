@@ -123,11 +123,19 @@ function VoicePreview({ audioUrl, onStop }: { audioUrl: string; onStop: () => vo
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dur, setDur] = useState(0);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
-    el.play().then(() => setPlaying(true)).catch(() => {});
+    el.load();
+    const tryPlay = () => {
+      el.play()
+        .then(() => setPlaying(true))
+        .catch(() => setError(true));
+    };
+    el.addEventListener('canplay', tryPlay, { once: true });
+    el.addEventListener('error', () => setError(true), { once: true });
     return () => { el.pause(); };
   }, []);
 
@@ -136,14 +144,26 @@ function VoicePreview({ audioUrl, onStop }: { audioUrl: string; onStop: () => vo
     const el = audioRef.current;
     if (!el) return;
     if (playing) { el.pause(); setPlaying(false); }
-    else { el.play(); setPlaying(true); }
+    else { el.play().catch(() => setError(true)); setPlaying(true); }
   };
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
+  if (error) {
+    return (
+      <div onClick={e => e.stopPropagation()} style={{ marginTop:8, padding:'8px 10px', background:'rgba(255,77,31,.08)', border:'1px solid rgba(255,77,31,.2)', borderRadius:10, display:'flex', alignItems:'center', gap:8 }}>
+        <span style={{ fontSize:12, color:'var(--mut)', flex:1 }}>Preview unavailable</span>
+        <button onClick={e => { e.stopPropagation(); onStop(); }}
+          style={{ background:'none', border:0, cursor:'pointer', color:'var(--mut)', padding:2, display:'grid', placeItems:'center' }}>
+          <svg style={{ width:12,height:12,fill:'none',stroke:'currentColor',strokeWidth:2 }} viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div onClick={e => e.stopPropagation()} style={{ marginTop:8, padding:'8px 10px', background:'rgba(255,77,31,.08)', border:'1px solid rgba(255,77,31,.2)', borderRadius:10, display:'flex', alignItems:'center', gap:8 }}>
-      <audio ref={audioRef} src={audioUrl}
+      <audio ref={audioRef} src={audioUrl} preload="auto"
         onTimeUpdate={() => setProgress(audioRef.current?.currentTime ?? 0)}
         onLoadedMetadata={() => setDur(audioRef.current?.duration ?? 0)}
         onEnded={() => { setPlaying(false); onStop(); }} />
@@ -332,11 +352,11 @@ export function TtsView() {
                 <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }} style={{ overflow:'hidden' }}>
                   <div style={{ display:'flex', gap:6, marginBottom:10 }}>
                     <input className="ie-inp" value={voicesSearch} onChange={e => setVoicesSearch(e.target.value)}
-                      placeholder="Search voices…" style={{ flex:1, padding:'8px 10px', fontSize:13 }} />
-                    <select className="ie-inp" value={voicesLang} onChange={e => setVoicesLang(e.target.value)} style={{ width:120, fontSize:12 }}>
+                      placeholder="Search voices…" style={{ flex:1, minWidth:0, padding:'8px 10px', fontSize:13 }} />
+                    <select className="ie-inp" value={voicesLang} onChange={e => setVoicesLang(e.target.value)} style={{ width:90, minWidth:0, fontSize:12 }}>
                       {LANGS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                     </select>
-                    <button className="ibtn" onClick={() => fetchVoices(1, voicesSearch, voicesLang)} aria-label="Search">
+                    <button className="ibtn" onClick={() => fetchVoices(1, voicesSearch, voicesLang)} aria-label="Search" style={{ flexShrink:0 }}>
                       <svg style={{ width:15,height:15,fill:'none',stroke:'currentColor',strokeWidth:1.8 }} viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
                     </button>
                   </div>
@@ -350,7 +370,7 @@ export function TtsView() {
                       />
                     </div>
                   ) : (
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, maxHeight:280, overflowY:'auto', scrollbarWidth:'thin' }}>
+                    <div className="voices-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, maxHeight:280, overflowY:'auto', scrollbarWidth:'thin' }}>
                       {voices.map(v => (
                         <VoiceCard key={v._id} voice={v} selected={selectedVoiceId === v._id}
                           playingPreviewId={playingPreviewId}
@@ -444,6 +464,7 @@ export function TtsView() {
         @keyframes wv{from{height:18%}to{height:92%}}
         @media(max-width:1020px){.tts-layout{grid-template-columns:1fr!important}}
         @media(max-width:480px){.tts-meta{display:none!important}}
+        @media(max-width:480px){.voices-grid{grid-template-columns:1fr!important}}
       `}</style>
     </div>
   );
