@@ -92,7 +92,7 @@ export function TopBar() {
               </span>
             )}
           </span>
-          <h1 className="topbar-heading">{titles[activeView] ?? activeView}</h1>
+          <h1 className="topbar-heading">{activeView ? (titles[activeView] ?? activeView) : '404'}</h1>
         </div>
 
         {/* Search */}

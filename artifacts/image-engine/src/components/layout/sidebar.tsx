@@ -215,7 +215,7 @@ export function Sidebar({
       </nav>
 
       {/* إعلان 300x250 */}
-      <AdBanner300 collapsed={collapsed} activeView={activeView} />
+      <AdBanner300 collapsed={collapsed} activeView={activeView ?? ''} />
 
       <div className="border-t border-border p-3">
         <button

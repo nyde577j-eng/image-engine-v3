@@ -44,7 +44,7 @@ const VIEW_TO_PATH: Record<ViewId, string> = {
 };
 
 interface AppContextValue {
-  activeView: ViewId;
+  activeView: ViewId | undefined;
   setActiveView: (v: ViewId) => void;
   prompt: string;
   setPrompt: (p: string) => void;
@@ -94,8 +94,8 @@ export function useApp() {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [location, navigate] = useLocation();
 
-  // URL is the source of truth — map current path to a ViewId
-  const activeView: ViewId = PATH_TO_VIEW[location] ?? 'home';
+  // URL is the source of truth — map current path to a ViewId (undefined = 404)
+  const activeView: ViewId | undefined = PATH_TO_VIEW[location];
 
   const setActiveView = useCallback((v: ViewId) => {
     navigate(VIEW_TO_PATH[v]);
