@@ -33,30 +33,31 @@ function MessageDisplay() {
         className={`flex flex-col items-center transition-opacity duration-500 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
-        style={{
-          background: 'rgba(13,13,13,0.72)',
-          backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)',
-          borderRadius: '20px',
-          padding: '40px 48px',
-          border: '1px solid rgba(255,255,255,0.08)',
-        }}
       >
         <div
-          className="text-[35px] font-semibold m-[1%] px-4 py-1 rounded"
-          style={{ color: '#f4f2ea' }}
+          className="text-[35px] font-semibold m-[1%]"
+          style={{
+            color: '#f4f2ea',
+            textShadow: '0 0 20px #0d0d0d, 0 0 40px #0d0d0d, 2px 2px 8px #0d0d0d',
+          }}
         >
           Page Not Found
         </div>
         <div
           className="text-[80px] font-bold m-[1%] leading-none"
-          style={{ color: '#f4f2ea' }}
+          style={{
+            color: '#ff4d1f',
+            textShadow: '0 0 30px rgba(255,77,31,0.5), 0 0 60px #0d0d0d, 2px 2px 12px #0d0d0d',
+          }}
         >
           404
         </div>
         <div
           className="text-[15px] w-1/2 min-w-[280px] text-center m-[1%] px-2"
-          style={{ color: '#c9c4ba' }}
+          style={{
+            color: '#938f83',
+            textShadow: '0 0 16px #0d0d0d, 1px 1px 6px #0d0d0d',
+          }}
         >
           The page you are looking for might have been removed, had its name
           changed, or is temporarily unavailable.
