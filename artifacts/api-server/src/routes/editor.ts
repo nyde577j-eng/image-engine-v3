@@ -87,8 +87,8 @@ router.post("/edit", async (req, res) => {
     return res.status(400).json({ ok: false, error: "text and imageUrl are required" });
   }
 
-  const apiUrl = process.env["IMAGE_EDITOR_API_URL"] ?? "https://validation-age-pole-visits.trycloudflare.com/img_editing/api.php
-";
+  const apiUrl = process.env["IMAGE_EDITOR_API_URL"] ?? "https://validation-age-pole-visits.trycloudflare.com/img_editing/api.php";
+  
 
   // Determine the public base URL of this server
   const host = process.env["PUBLIC_URL"] ?? `https://${req.headers.host}`;
